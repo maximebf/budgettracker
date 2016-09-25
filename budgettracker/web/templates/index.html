@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{{date.strftime('%B %Y')}} | BudgetTracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+        background: #e4e4e4;
+        font-family: sans-serif;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      .neg {
+        color: #d21111;
+      }
+      .warn {
+        color: #f7a436;
+      }
+      .pos {
+        color: #2cd211;
+      }
+      #page {
+        width: 600px;
+        max-width: 100%;
+        margin: 50px auto 15px;
+        border: 1px solid #ffffff;
+        border-radius: 7px;
+        padding: 10px;
+        background: #fff;
+      }
+      #header {
+        margin: -10px -10px 0;
+        padding: 20px;
+        text-align: center;
+        background: #7bbbf7;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        color: #fff;
+        border-bottom: 9px solid #5aa0e2;
+        display: flex;
+        align-items: center;
+
+      }
+        #header > a {
+          flex: 0 0 30px;
+          font-size: 28px;
+          text-decoration: none;
+          color: #fff;
+        }
+        #header h1 {
+          flex: 1 1 auto;
+          margin: 0;
+          padding: 0;
+          display: inline
+        }
+      #balance {
+        margin: 30px 0 10px;
+        display: flex;
+        align-items: center;
+      }
+        #balance > div {
+          flex: 1 1 auto;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+          #balance .title {
+            margin-bottom: 10px;
+            color: #aaa;
+          }
+          #balance .value {
+            font-size: 40px;
+            font-family: monospace;
+          }
+      #page > p {
+        border-top: 1px dotted #eee;
+        padding: 6px 0;
+        margin: 0;
+      }
+        #page > p > label {
+          color: #777;
+        }
+        #page > p > .value {
+          float: right;
+          font-family: monospace;
+          font-size: 14px;
+          font-weight: bold;
+        }
+      hr {
+        border: 0;
+        border-top: 1px dotted #ddd;
+        padding: 0;
+        margin: 20px 0;
+      }
+      .transactions {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .transactions.hidden {
+        display: none;
+      }
+        .transactions li {
+          margin-bottom: 10px;
+          padding: 0;
+        }
+          .transactions li .date {
+            display: inline-block;
+            margin-right: 10px;
+            color: #888;
+            float: left;
+          }
+          .transactions li .label {
+            max-width: 410px;
+            display: inline-block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .transactions li .amount {
+            float: right;
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: bold;
+          }
+      #showMore {
+        display: block;
+        text-align: center;
+        padding: 5px;
+        color: #aaa;
+      }
+      #footer {
+        padding: 10px 0;
+        text-align: center;
+        font-size: 12px;
+        color: #b7b7b7;
+        margin-bottom: 20px;
+      }
+        #footer a {
+          color: #b7b7b7;
+        }
+      @media screen and (max-width: 600px) {
+        #balance {
+          flex-direction: column;
+        }
+        #page {
+          border: 0;
+          margin: 0;
+          padding: 5px;
+        }
+        .transactions li .label {
+          max-width: 183px;
+        }
+      }
+    </style>
+    <script>
+      function showAllTransactions() {
+        document.querySelector('.transactions.hidden').classList.remove('hidden');
+        document.querySelector('#showMore').remove();
+      }
+    </script>
+  </head>
+  <body>
+    <div id="page">
+      <div id="header">
+        <a href="/{{prev_date.year}}-{{prev_date.month}}">&laquo;</a>
+        <h1 id="month">{{date.strftime('%B %Y')}}</h1>
+        {% if next_date %}<a href="/{{next_date.year}}-{{next_date.month}}">&raquo;</a>{% endif %}
+      </div>
+      <div id="balance">
+        {% if not next_date %}
+        <div class="total">
+          <div class="title">Balance</div>
+          <div class="value">{{balance}}€</div>
+        </div>
+        {% endif %}
+        <div class="month">
+          <div class="title">{% if not next_date %}This month{% else %}Balance{% endif %}</div>
+          <div class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{budget.balance}}€</div>
+        </div>
+      </div>
+      <p id="remaining">
+        <label>Remaining</label>
+        <span class="value {% if budget.remaining > 0 %}pos{% endif %}">{{budget.remaining}}€</span>
+      </p>
+      <p id="income">
+        <label>Income</label>
+        <span class="value pos">{{budget.income}}€</span>
+      </p>
+      <p id="recurring_expenses">
+        <label>Recurring expenses</label>
+        <span class="value neg">{{budget.recurring_expenses}}€</span>
+      </p>
+      <p id="expenses">
+        <label>Expenses</label>
+        <span class="value neg">{{budget.expenses}}€</span>
+      </p>
+      <p id="savings">
+        <label>Savings</label>
+        <span class="value {{ 'neg' if budget.savings == 0 else ('pos' if budget.savings == budget.savings_goal else 'warn') }}">
+          {{budget.savings}}€ / {{budget.savings_goal}}€ ({{ (budget.savings * 100 / budget.savings_goal)|int }}%)
+        </span>
+      </p>
+      <hr>
+      <ul class="transactions">
+        {% for tx in budget.transactions[:10] %}
+        <li>
+          <span class="date">{{tx.date.strftime('%d %b')}}</span>
+          <span class="label" title="{{tx.label}}">{{tx.label}}</span>
+          <span class="amount">{{tx.amount}}€</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <a id="showMore" href="javascript:" onclick="showAllTransactions()">more</a>
+      <ul class="transactions hidden">
+        {% for tx in budget.transactions[10:] %}
+        <li>
+          <span class="date">{{tx.date.strftime('%d %b')}}</span>
+          <span class="label" title="{{tx.label}}">{{tx.label}}</span>
+          <span class="amount">{{tx.amount}}€</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div id="footer">
+      <a href="{{url_for('budget', year=date.year, month=date.month)}}">budget.json</a> -
+      <a href="{{url_for('transactions', year=date.year, month=date.month)}}">transactions.json</a> -
+      <a href="{{url_for('logout')}}">logout</a>
+    </div>
+  </body>
+</html>

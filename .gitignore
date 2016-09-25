@@ -1,0 +1,5 @@
+*.pyc
+/transactions
+/session.json
+/config.json
+/balance
