@@ -9,6 +9,7 @@ import functools
 app = Flask(__name__)
 config = load_config()
 app.config['SECRET_KEY'] = config['web_passcode']
+app.config.update(config.get('web_config', {}))
 
 
 def requires_passcode(func):
