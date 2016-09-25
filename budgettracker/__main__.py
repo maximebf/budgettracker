@@ -30,7 +30,7 @@ def update():
 
     if prev_budget:
         budget = make_budget_from_config(transactions, config)
-        if config.get('notify_balance') and budget.balance < config['notify_balance']:
+        if config.get('notify_balance') and prev_budget.balance > config['notify_balance'] and budget.balance <= config['notify_balance']:
             notify(u'BUDGET: /!\ LOW BALANCE: %se' % budget.balance)
         elif config.get('notify_delta') and (prev_budget.remaining - budget.remaining) > config['notify_delta']:
             notify(u'BUDGET: Remaining funds: %se' % budget.remaining)
