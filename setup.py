@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='budgettracker',
-    version='0.4',
+    version='0.5',
     url='http://github.com/maximebf/budgettracker',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -11,7 +11,7 @@ setup(
     description='Simple budget tracking app',
     packages=find_packages(),
     package_data={
-        'budgettracker': ['web/templates/*.html'],
+        'budgettracker': ['web/templates/*', 'web/static/*'],
     },
     zip_safe=False,
     platforms='any',

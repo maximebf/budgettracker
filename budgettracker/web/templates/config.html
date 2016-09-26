@@ -2,12 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Login | BudgetTracker</title>
+    <title>Config | BudgetTracker</title>
     {% include "_headers.html" %}
   </head>
   <body>
     <form method="post" action="" id="page">
-      <input type="password" name="code" placeholder="Code">
+      <textarea name="config" rows="40">{{config}}</textarea>
       <button type="submit">Go</button>
     </form>
   </body>

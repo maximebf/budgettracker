@@ -4,7 +4,10 @@ from .filters import budgetize, extract_inter_account_transactions
 from monthdelta import monthdelta
 
 
-def load_config(filename='config.json'):
+CONFIG_FILENAME = 'config.json'
+
+
+def load_config(filename=CONFIG_FILENAME):
     with open(filename) as f:
         return json.load(f)
 

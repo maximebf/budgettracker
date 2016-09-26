@@ -1,9 +1,10 @@
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 import datetime
-from ..utils import load_config, load_budget_from_config, load_balance
+from ..utils import CONFIG_FILENAME, load_config, load_budget_from_config, load_balance
 from ..data import transaction_to_dict
 from monthdelta import monthdelta
 import functools
+import json
 
 
 app = Flask(__name__)
@@ -81,3 +82,18 @@ def transactions(year, month):
     date = datetime.date(year, month, 1)
     budget, _, __ = load_budget_from_config(config, date)
     return jsonify(map(transaction_to_dict, budget.transactions))
+
+
+@app.route('/config', methods=['GET', 'POST'])
+@requires_passcode
+def edit_config():
+    global config
+    if request.method == 'POST':
+        try:
+            config = json.loads(request.form['config'])
+            with open(CONFIG_FILENAME, 'w') as f:
+                json.dump(config, f)
+            return redirect(url_for('index'))
+        except:
+            pass
+    return render_template('config.html', config=json.dumps(config, indent=2))
