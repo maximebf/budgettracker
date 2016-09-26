@@ -70,8 +70,7 @@ def situation():
     print "-----------------------------------------"
     print "Expenses             = %s€" % budget.expenses
     print "Savings              = %s€ / %s€ / %s€" % (budget.savings, budget.expected_savings, budget.savings_goal)
-    print "-----------------------------------------"
-    print "Remaining            = %s€ / %s€" % (budget.remaining, budget.expected_remaining)
+    print "Remaining            = %s€" % (budget.expected_remaining)
 
 
 command = "situation"

@@ -52,8 +52,7 @@ def extract_transactions_by_label(transactions, labels):
 
 Budget = namedtuple('Budget', ['transactions', 'income_transactions', 'recurring_expenses_transactions',
     'expenses_transactions', 'balance', 'income', 'recurring_expenses', 'expenses', 'savings',  'savings_goal',
-    'remaining', 'expected_income', 'expected_recurring_expenses', 'expected_available', 'expected_savings',
-    'expected_remaining'])
+    'expected_income', 'expected_recurring_expenses', 'expected_available', 'expected_savings', 'expected_remaining'])
 
 
 def budgetize(transactions, expected_income=0, expected_recurring_expenses=0, recurring_expenses_labels=None, savings_goal=0):
@@ -66,11 +65,7 @@ def budgetize(transactions, expected_income=0, expected_recurring_expenses=0, re
     income = income_transactions.sum
     recurring_expenses = recurring_expenses_transactions.abs_sum
     expenses = expenses_transactions.abs_sum
-    remaining = max(income - expected_recurring_expenses - expenses, 0)
-    savings = 0
-    if remaining > 0:
-        savings = min(remaining, savings_goal)
-        remaining -= savings
+    savings = max(income - expected_recurring_expenses - expenses, 0)
 
     expected_available = expected_income - expected_recurring_expenses
     expected_remaining = max(expected_available - expenses, 0)
@@ -89,7 +84,6 @@ def budgetize(transactions, expected_income=0, expected_recurring_expenses=0, re
                   expenses=round(expenses, 2),
                   savings=round(savings, 2),
                   savings_goal=round(savings_goal, 2),
-                  remaining=round(remaining, 2),
                   expected_income=round(expected_income, 2),
                   expected_recurring_expenses=round(expected_recurring_expenses, 2),
                   expected_available=round(expected_available, 2),

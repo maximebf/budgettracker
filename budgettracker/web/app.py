@@ -67,7 +67,6 @@ def budget(year, month):
                    expenses=budget.expenses,
                    savings=budget.savings,
                    savings_goal=budget.savings_goal,
-                   remaining=budget.remaining,
                    expected_income=budget.expected_income,
                    expected_recurring_expenses=budget.expected_recurring_expenses,
                    expected_available=budget.expected_available,
