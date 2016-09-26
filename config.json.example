@@ -2,6 +2,8 @@
     "bank_adapter": "bankin",
     "bank_username": "USERNAME",
     "bank_password": "PASSWORD",
+    "expected_income": 10000,
+    "expected_recurring_expenses": 3000,
     "savings_goal": 1000,
     "inter_account_labels_out": "REGEXP TO MATCH OUTGOING TRANSFER",
     "inter_account_labels_in": "REGEXP TO MATCH INCOMING TRANSFER",

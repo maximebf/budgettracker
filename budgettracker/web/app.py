@@ -52,7 +52,8 @@ def index(year=None, month=None):
       prev_date=(date - monthdelta(1)),
       next_date=(date + monthdelta(1)) if date < current else None,
       balance=load_balance(adapter, session),
-      budget=budget)
+      budget=budget,
+      max=max)
 
 
 @app.route('/<int:year>-<int:month>/budget.json')
@@ -63,11 +64,16 @@ def budget(year, month):
     return jsonify(balance=budget.balance,
                    income=budget.income,
                    recurring_expenses=budget.recurring_expenses,
-                   available=budget.available,
                    expenses=budget.expenses,
                    savings=budget.savings,
                    savings_goal=budget.savings_goal,
-                   remaining=budget.remaining)
+                   remaining=budget.remaining,
+                   expected_income=budget.expected_income,
+                   expected_recurring_expenses=budget.expected_recurring_expenses,
+                   expected_available=budget.expected_available,
+                   expected_expenses=budget.expected_expenses,
+                   expected_savings=budget.expected_savings,
+                   expected_remaining=budget.expected_remaining)
 
 
 @app.route('/<int:year>-<int:month>/transactions.json')

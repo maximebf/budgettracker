@@ -51,29 +51,47 @@ def extract_transactions_by_label(transactions, labels):
 
 
 Budget = namedtuple('Budget', ['transactions', 'income_transactions', 'recurring_expenses_transactions',
-    'expenses_transactions', 'balance', 'income', 'recurring_expenses', 'available', 'expenses',
-    'savings', 'savings_goal', 'remaining'])
+    'expenses_transactions', 'balance', 'income', 'recurring_expenses', 'expenses', 'savings',  'savings_goal',
+    'remaining', 'expected_income', 'expected_recurring_expenses', 'expected_available', 'expected_savings',
+    'expected_remaining'])
 
 
-def budgetize(transactions, recurring_expenses_labels=None, savings_goal=0):
-    income, expenses = split_income_expenses(transactions)
-    recur_expenses, expenses = extract_transactions_by_label(expenses, recurring_expenses_labels)
+def budgetize(transactions, expected_income=0, expected_recurring_expenses=0, recurring_expenses_labels=None, savings_goal=0):
+    income_transactions, expenses_transactions = split_income_expenses(transactions)
+    recurring_expenses_transactions, expenses_transactions = extract_transactions_by_label(
+        expenses_transactions, recurring_expenses_labels)
 
+    expenses_goal = expected_income - expected_recurring_expenses - savings_goal
+    balance = transactions.sum
+    income = income_transactions.sum
+    recurring_expenses = recurring_expenses_transactions.abs_sum
+    expenses = expenses_transactions.abs_sum
+    remaining = max(income - expected_recurring_expenses - expenses, 0)
     savings = 0
-    remaining = max(transactions.sum, 0)
     if remaining > 0:
         savings = min(remaining, savings_goal)
         remaining -= savings
 
+    expected_available = expected_income - expected_recurring_expenses
+    expected_remaining = max(expected_available - expenses, 0)
+    expected_savings = 0
+    if expected_remaining > 0:
+        expected_savings = min(expected_remaining, savings_goal)
+        expected_remaining -= expected_savings
+
     return Budget(transactions=transactions,
-                  income_transactions=income,
-                  recurring_expenses_transactions=recur_expenses,
-                  expenses_transactions=expenses,
+                  income_transactions=income_transactions,
+                  recurring_expenses_transactions=recurring_expenses_transactions,
+                  expenses_transactions=expenses_transactions,
                   balance=round(transactions.sum, 2),
-                  income=round(income.sum, 2),
-                  recurring_expenses=round(recur_expenses.abs_sum, 2),
-                  available=round(income.sum - recur_expenses.abs_sum, 2),
-                  expenses=round(expenses.abs_sum, 2),
+                  income=round(income, 2),
+                  recurring_expenses=round(recurring_expenses, 2),
+                  expenses=round(expenses, 2),
                   savings=round(savings, 2),
-                  savings_goal=savings_goal,
-                  remaining=remaining)
+                  savings_goal=round(savings_goal, 2),
+                  remaining=round(remaining, 2),
+                  expected_income=round(expected_income, 2),
+                  expected_recurring_expenses=round(expected_recurring_expenses, 2),
+                  expected_available=round(expected_available, 2),
+                  expected_savings=round(expected_savings, 2),
+                  expected_remaining=round(expected_remaining, 2))

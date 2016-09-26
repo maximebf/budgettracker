@@ -64,14 +64,14 @@ def situation():
     print "Balance              = %s€" % load_balance(adapter, session)
     print "Balance this month   = %s€" % budget.balance
     print "-----------------------------------------"
-    print "Income               = %s€" % budget.income
-    print "Recurring expenses   = %s€" % budget.recurring_expenses
-    print "Available            = %s€" % budget.available
+    print "Income               = %s€ / %s€" % (budget.income, budget.expected_income)
+    print "Recurring expenses   = %s€ / %s€" % (budget.recurring_expenses, budget.expected_recurring_expenses)
+    print "Expected available   = %s€" % budget.expected_available
     print "-----------------------------------------"
     print "Expenses             = %s€" % budget.expenses
-    print "Savings              = %s€ / %s€" % (budget.savings, budget.savings_goal)
+    print "Savings              = %s€ / %s€ / %s€" % (budget.savings, budget.expected_savings, budget.savings_goal)
     print "-----------------------------------------"
-    print "Remaining            = %s€" % budget.remaining
+    print "Remaining            = %s€ / %s€" % (budget.remaining, budget.expected_remaining)
 
 
 command = "situation"

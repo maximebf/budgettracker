@@ -79,14 +79,25 @@
         padding: 6px 0;
         margin: 0;
       }
+      #page > p.big {
+        font-size: 20px;
+        padding: 12px 0;
+      }
         #page > p > label {
           color: #777;
+        }
+        #page > p.big > label {
+          color: #444;
+          font-weight: bold;
         }
         #page > p > .value {
           float: right;
           font-family: monospace;
           font-size: 14px;
           font-weight: bold;
+        }
+        #page > p.big > .value {
+          font-size: 20px;
         }
       hr {
         border: 0;
@@ -181,17 +192,34 @@
           <div class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{budget.balance}}€</div>
         </div>
       </div>
+      {% if not next_date %}
+      <p id="remaining" class="big">
+        <label>Safe to spend</label>
+        <span class="value {% if budget.expected_remaining > 0 %}pos{% endif %}">{{budget.expected_remaining}}€</span>
+      </p>
+      {% else %}
       <p id="remaining">
         <label>Remaining</label>
-        <span class="value {% if budget.remaining > 0 %}pos{% endif %}">{{budget.remaining}}€</span>
+        <span class="value">{{budget.remaining}}€</span>
       </p>
+      {% endif %}
       <p id="income">
         <label>Income</label>
-        <span class="value pos">{{budget.income}}€</span>
+        <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
+          {{max(budget.expected_income, budget.income) if not next_date else budget.income }}€
+          {% if budget.income > budget.expected_income %}
+            (+{{budget.income - budget.expected_income}}€)
+          {% elif budget.income < budget.expected_income %}
+            (-{{budget.expected_income - budget.income}}€)
+          {% endif %}
+        </span>
       </p>
       <p id="recurring_expenses">
         <label>Recurring expenses</label>
-        <span class="value neg">{{budget.recurring_expenses}}€</span>
+        <span class="value neg">
+          {{max(budget.expected_recurring_expenses, budget.recurring_expenses)}}€
+          {% if budget.recurring_expenses < budget.expected_recurring_expenses %}({{budget.recurring_expenses}}€){% endif %}
+        </span>
       </p>
       <p id="expenses">
         <label>Expenses</label>
@@ -199,9 +227,15 @@
       </p>
       <p id="savings">
         <label>Savings</label>
-        <span class="value {{ 'neg' if budget.savings == 0 else ('pos' if budget.savings == budget.savings_goal else 'warn') }}">
-          {{budget.savings}}€ / {{budget.savings_goal}}€ ({{ (budget.savings * 100 / budget.savings_goal)|int }}%)
+        {% if not next_date %}
+        <span class="value {{ 'neg' if budget.expected_savings == 0 else ('pos' if budget.expected_savings == budget.savings_goal else 'warn') }}">
+          {{budget.expected_savings}}€ / {{budget.savings_goal}}€ ({{ (budget.expected_savings * 100 / budget.savings_goal)|int }}%)
         </span>
+        {% else %}
+        <span class="value {{ 'neg' if budget.savings == 0 else ('pos' if budget.savings == budget.savings_goal else 'warn') }}">
+          {{budget.savings}}€ / {{budget.savings_goal}}€
+        </span>
+        {% endif %}
       </p>
       <hr>
       <ul class="transactions">

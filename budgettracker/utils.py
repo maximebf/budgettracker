@@ -73,7 +73,8 @@ def load_transactions_of_month(date, adapter=None, session=None, filename=None, 
 def make_budget_from_config(transactions, config):
     _, transactions = extract_inter_account_transactions(transactions,
             config['inter_account_labels_out'], config['inter_account_labels_in'])
-    return budgetize(transactions, config.get('recurring_expenses_labels', []), config.get('savings_goal', 0))
+    return budgetize(transactions, config.get('expected_income', 0), config.get('expected_recurring_expenses', 0),
+        config.get('recurring_expenses_labels', []), config.get('savings_goal', 0))
 
 
 def load_budget_from_config(config, date):
