@@ -8,29 +8,36 @@
     }
   </script>
 {% endblock %}
-{% block page %}
+{% block page_header %}
   <div id="available">
-    {{account_balance}}€
+    {{account_balance or 0}}€
   </div>
   <div id="header">
     <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
     <h1 id="month">{{date.strftime('%B %Y')}}</h1>
     {% if not next_date %}
       <form action="{{url_for('refresh')}}" method="POST">
-        <button type="submit" title="Update data">R</button>
+        <button type="submit" title="Update data">&#8635;</button>
       </form>
     {% else %}
       <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
     {% endif %}
   </div>
-  {% include "_budget.html" %}
-  <hr>
-  {% include "_transactions.html" %}
+{% endblock %}
+{% block page %}
+  {% if budget %}
+    {% include "_budget.html" %}
+    <hr>
+    {% include "_transactions.html" %}
+  {% else %}
+    <p id="nodata">No data for this month</p>
+  {% endif %}
 {% endblock %}
 {% block footer %}
   <div id="footer">
     <a href="{{url_for('budget', year=date.year, month=date.month)}}">budget.json</a> -
     <a href="{{url_for('transactions', year=date.year, month=date.month)}}">transactions.json</a> -
+    <a href="{{url_for('transactions_csv', year=date.year, month=date.month)}}">transactions.csv</a> -
     <a href="{{url_for('edit_config')}}">config</a> -
     <a href="{{url_for('logout')}}">logout</a>
   </div>

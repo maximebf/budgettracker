@@ -1,6 +1,6 @@
 import requests, time, os, json, datetime
 from .data import dump_transactions, load_transactions, extract_inter_account_transactions
-from .budget import budgetize, RecurringExpense
+from .budget import budgetize, IncomeSource, RecurringExpense, SavingsGoal
 from monthdelta import monthdelta
 
 
@@ -88,8 +88,10 @@ def make_budget_from_config(transactions, config):
     if 'inter_account_labels_out' in config and 'inter_account_labels_in' in config:
         _, transactions = extract_inter_account_transactions(transactions,
                 config['inter_account_labels_out'], config['inter_account_labels_in'])
+    income_sources = map(IncomeSource.from_dict, config.get('income_sources', []))
     recurring_expenses = map(RecurringExpense.from_dict, config.get('recurring_expenses', []))
-    return budgetize(transactions, config.get('expected_income', 0), recurring_expenses, config.get('savings_goal', 0))
+    savings_goals = map(SavingsGoal.from_dict, config.get('savings_goals', []))
+    return budgetize(transactions, income_sources, recurring_expenses, savings_goals)
 
 
 def load_budget_of_month_from_config(config, date, refresh=False, adapter=None, session=None):
@@ -117,7 +119,7 @@ def update_local_data(config, notify=True):
     budget = load_budget_of_month_from_config(config, date, refresh=True, adapter=adapter, session=session)
     save_balance(adapter, session)
     if notify and prev_budget:
-        if config.get('notify_balance') and prev_budget.balance > config['notify_balance'] and budget.balance <= config['notify_balance']:
-            notify_using_config(config, 'BUDGET: /!\ LOW BALANCE: %se' % budget.balance)
-        elif config.get('notify_delta') and (prev_budget.remaining - budget.remaining) > config['notify_delta']:
-            notify_using_config(config, 'BUDGET: Remaining funds: %se' % budget.remaining)
+        if config.get('notify_remaining') and prev_budget.expected_remaining > config['notify_remaining'] and budget.expected_remaining <= config['notify_remaining']:
+            notify_using_config(config, 'BUDGET: /!\ LOW SAFE TO SPEND: %se' % budget.expected_remaining)
+        elif config.get('notify_delta') and (prev_budget.expected_remaining - budget.expected_remaining) > config['notify_delta']:
+            notify_using_config(config, 'BUDGET: Remaining funds: %se' % budget.expected_remaining)

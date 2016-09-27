@@ -8,7 +8,7 @@ Budget = namedtuple('Budget', ['transactions', 'income_transactions', 'recurring
     'expected_recurring_expenses', 'expected_savings', 'expected_remaining'])
 
 
-class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'match'])):
+class IncomeSource(namedtuple('IncomeSource', ['label', 'amount', 'match'])):
     @classmethod
     def from_dict(cls, dct):
         return cls(label=dct['label'], amount=dct['amount'], match=dct.get('match'))
@@ -19,19 +19,68 @@ class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'match
                 "match": self.match}
 
 
-def budgetize(transactions, expected_income=0, recurring_expenses=None, savings_goal=0):
+class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recurrence', 'match'])):
+    WEEKLY = 0.25
+    MONTHLY = 1
+    YEARLY = 12
+
+    @classmethod
+    def from_dict(cls, dct):
+        recurrence = dct.get('recurrence', cls.MONTHLY)
+        if isinstance(recurrence, (str, unicode)):
+            recurrence = getattr(cls, recurrence.upper(), 1)
+        return cls(label=dct['label'], amount=dct['amount'], recurrence=recurrence, match=dct.get('match'))
+
+    @property
+    def amount_per_month(self):
+        return round(self.amount / self.recurrence, 0)
+
+    @property
+    def recurrence_label(self):
+        return dict([
+            (0.25, "WEEKLY"),
+            (1, "MONTHLY"),
+            (12, "YEARLY")
+        ]).get(self.recurrence, self.recurrence)
+
+    def to_dict(self):
+        return {"label": self.label,
+                "amount": self.amount,
+                "recurrence": self.recurrence_label,
+                "match": self.match}
+
+
+class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(**dct)
+
+    def to_dict(self):
+        return {"label": self.label,
+                "amount": self.amount}
+
+
+def budgetize(transactions, income_sources=None, recurring_expenses=None, savings_goals=None):
     income_transactions, expenses_transactions = split_income_expenses(transactions)
     real_balance = transactions.sum
     income = income_transactions.sum
     expenses = expenses_transactions.abs_sum
 
+    expected_income = 0
+    if income_sources:
+      expected_income = sum([src.amount for src in income_sources])
+
     recurring_expenses_transactions = SummableList()
     expected_recurring_expenses = 0
     if recurring_expenses:
-      recurring_expenses_labels = [exp.match for exp in recurring_expenses if exp.match]
-      expected_recurring_expenses = sum([exp.amount for exp in recurring_expenses])
-      recurring_expenses_transactions, expenses_transactions = extract_transactions_by_label(
-          expenses_transactions, recurring_expenses_labels)
+        recurring_expenses_labels = [exp.match for exp in recurring_expenses if exp.match]
+        expected_recurring_expenses = sum([exp.amount_per_month for exp in recurring_expenses])
+        recurring_expenses_transactions, expenses_transactions = extract_transactions_by_label(
+            expenses_transactions, recurring_expenses_labels)
+
+    savings_goal = 0
+    if savings_goals:
+        savings_goal = sum([s.amount for s in savings_goals]) / 12
     
     recurring_expenses = recurring_expenses_transactions.abs_sum
     savings = income - expected_recurring_expenses - expenses

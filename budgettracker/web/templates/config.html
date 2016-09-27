@@ -1,8 +1,128 @@
 {% extends "layout.html" %}
 {% block title %}Config{% endblock %}
 {% block page %}
-  <form method="post" action="">
-    <textarea name="config" rows="40">{{config}}</textarea>
-    <button type="submit">Go</button>
+  <form id="config" action="" method="POST">
+    <fieldset>
+      <legend>Income Sources</legend>
+      <table id="income_sources">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th width="100">Amount</th>
+            <th>Match</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for src in income_sources %}
+          <tr>
+            <td><input type="text" value="{{src.label}}" name="income_sources_label" required></td>
+            <td><input type="number" value="{{src.amount}}" name="income_sources_amount" required></td>
+            <td><input type="text" value="{{src.match or ''}}" name="income_sources_match"></td>
+            <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="income_sources_row">
+        <tr>
+          <td><input type="text" value="" name="income_sources_label" required></td>
+          <td><input type="number" value="" name="income_sources_amount" required></td>
+          <td><input type="text" value="" name="income_sources_match"></td>
+          <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+        </tr>
+      </template>
+      <button type="button" onclick="addTemplateRow('income_sources')">&oplus; Add</button>
+    </fieldset>
+    <fieldset>
+      <legend>Recurring Expenses</legend>
+      <table id="recurring_expenses">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th width="100">Amount</th>
+            <th>Recurrence</th>
+            <th>Match</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exp in recurring_expenses %}
+          <tr>
+            <td><input type="text" value="{{exp.label}}" name="recurring_expenses_label" required></td>
+            <td><input type="number" value="{{exp.amount}}" name="recurring_expenses_amount" required></td>
+            <td>
+              <select name="recurring_expenses_recurrence">
+                {% for recur in ('Weekly', 'Monthly', 'Yearly') %}
+                <option value="{{recur|upper}}" {% if recur|upper == exp.recurrence_label %}selected{% endif %}>{{recur}}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input type="text" value="{{exp.match or ''}}" name="recurring_expenses_match"></td>
+            <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="recurring_expenses_row">
+        <tr>
+          <td><input type="text" value="" name="recurring_expenses_label" required></td>
+          <td><input type="number" value="" name="recurring_expenses_amount" required></td>
+          <td>
+            <select name="recurring_expenses_recurrence">
+              {% for recur in ('Weekly', 'Monthly', 'Yearly') %}
+              <option value="{{recur|upper}}">{{recur}}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input type="text" value="" name="recurring_expenses_match"></td>
+          <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+        </tr>
+      </template>
+      <button type="button" onclick="addTemplateRow('recurring_expenses')">&oplus; Add</button>
+    </fieldset>
+    <fieldset>
+      <legend>Savings Goals (per year)</legend>
+      <table id="savings_goals">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th width="100">Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for goal in savings_goals %}
+          <tr>
+            <td><input type="text" value="{{goal.label}}" name="savings_goals_label" required></td>
+            <td><input type="number" value="{{goal.amount}}" name="savings_goals_amount" required></td>
+            <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="savings_goals_row">
+        <tr>
+          <td><input type="text" value="" name="savings_goals_label" required></td>
+          <td><input type="number" value="" name="savings_goals_amount" required></td>
+          <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+        </tr>
+      </template>
+      <button type="button" onclick="addTemplateRow('savings_goals')">&oplus; Add</button>
+    </fieldset>
+    <button type="submit">Save</button>
   </form>
+  <script>
+    function addTemplateRow(tableId) {
+      var t = document.querySelector('#' + tableId + '_row');
+      var tb = document.querySelector('#' + tableId + ' tbody');
+      var clone = document.importNode(t.content, true);
+      tb.appendChild(clone);
+    }
+
+    function removeRow(event) {
+      var tr = event.target.parentNode.parentNode;
+      tr.parentNode.removeChild(tr);
+    }
+  </script>
 {% endblock %}

@@ -4,9 +4,18 @@ body {
   font-family: sans-serif;
   margin: 0;
 }
+
 * {
   box-sizing: border-box;
 }
+
+hr {
+  border: 0;
+  border-top: 1px dotted #ddd;
+  padding: 0;
+  margin: 20px 0;
+}
+
 .neg {
   color: #d21111;
 }
@@ -16,6 +25,7 @@ body {
 .pos {
   color: #2cd211;
 }
+
 .tooltip {
   display: inline-block;
   padding: 2px 4px;
@@ -44,6 +54,7 @@ body {
   .tooltip:hover > span {
     display: block;
   }
+
 #page {
   width: 600px;
   max-width: 100%;
@@ -53,21 +64,25 @@ body {
   padding: 10px;
   background: #fff;
 }
+
 #available {
   margin: -10px -10px 0;
   padding: 10px;
   text-align: center;
   background: #5aa0e2;
   color: #fff;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
   font-size: 20px;
   font-weight: bold;
   font-family: monospace;
 }
+
 #header {
-  margin: 0 -10px;
+  margin: -10px -10px 30px;
   padding: 20px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
   text-align: center;
   background: #7bbbf7;
   color: #fff;
@@ -75,13 +90,18 @@ body {
   display: flex;
   align-items: center;
 }
+#available + #header {
+  margin-top: 0;
+  border-radius: 0;
+}
   #header h1 {
     flex: 1 1 auto;
     margin: 0;
     padding: 0;
     display: inline
   }
-  #header > a {
+  #header > a,
+  #header > span {
     flex: 0 0 30px;
     font-size: 28px;
     text-decoration: none;
@@ -97,56 +117,60 @@ body {
       font-size: 28px;
       color: #fff;
       cursor: pointer;
+      padding: 0;
+      width: 100%;
     }
-#top {
-  margin: 30px 0 10px;
+
+.budget > .header {
+  margin: 0 0 10px;
   display: flex;
   align-items: center;
 }
-  #top > div {
+  .budget > .header > div {
     flex: 1 1 auto;
     text-align: center;
     margin-bottom: 20px;
   }
-    #top .title {
+    .budget > .header .title {
       margin-bottom: 10px;
       color: #aaa;
     }
-    #top .value {
+      .budget > .header .title a {
+        color: #aaa;
+      }
+    .budget > .header .value {
       font-size: 40px;
       font-family: monospace;
     }
-#page > p {
+.budget > p {
   border-top: 1px dotted #eee;
   padding: 6px 0;
   margin: 0;
 }
-#page > p.big {
+.budget > p.big {
   font-size: 20px;
   padding: 12px 0;
 }
-  #page > p > label {
+  .budget > p > label {
     color: #777;
   }
-  #page > p.big > label {
+    .budget > p > label > a {
+      color: #777;
+    }
+  .budget > p.big > label {
     color: #444;
     font-weight: bold;
   }
-  #page > p > .value {
+  .budget > p > .value {
     float: right;
     font-family: monospace;
     font-size: 14px;
     font-weight: bold;
   }
-  #page > p.big > .value {
+  .budget > p.big > .value {
     font-size: 20px;
   }
-hr {
-  border: 0;
-  border-top: 1px dotted #ddd;
-  padding: 0;
-  margin: 20px 0;
-}
+
 .transactions {
   list-style: none;
   margin: 0;
@@ -178,12 +202,22 @@ hr {
       font-size: 14px;
       font-weight: bold;
     }
+
 #showMore {
   display: block;
   text-align: center;
   padding: 5px;
   color: #aaa;
 }
+
+#nodata {
+  margin: 40px 0 !important;
+  text-align: center;
+  font-size: 16px;
+  color: #777;
+  border: 0 !important;
+}
+
 #footer {
   padding: 10px 0;
   text-align: center;
@@ -194,12 +228,14 @@ hr {
   #footer a {
     color: #b7b7b7;
   }
+
 @media screen and (max-width: 600px) {
   #balance {
     flex-direction: column;
   }
   #page {
     border: 0;
+    border-radius: 0;
     margin: 0;
     padding: 5px;
   }
@@ -208,22 +244,70 @@ hr {
   }
 }
 
-form {
+#login {
   text-align: center;
 }
-textarea {
-  width: 100%;
-  display: block;
-  margin: 0 0 10px;
+  #login input {
+    font-size: 30px;
+    padding: 5px 10px;
+    width: 100%;
+    display: block;
+    margin-bottom: 20px;
+  }
+
+#config {
+  overflow: auto;
+  zoom: 1;
 }
-input {
-  font-size: 18px;
-  padding: 4px;
-}
-button {
-  font-size: 17px;
-  padding: 8px 16px;
-  background: #ddd;
+
+#config fieldset {
   border: 0;
-  border-radius: 5px;
+  padding: 0 0 10px;
+  margin-bottom: 20px;
+}
+  #config legend {
+    margin: 0 0 10px;
+    padding: 0;
+    font-size: 22px;
+    color: #444;
+  }
+
+#config table {
+  width: 100%;
+  border-spacing: 0;
+  margin-bottom: 10px;
+}
+  #config td {
+    padding: 2px;
+    border-bottom: 1px dotted #ddd;
+  }
+  #config td:first-child {
+    padding-left: 0;
+  }
+  #config td:last-child {
+    padding-right: 0;
+  }
+  #config th {
+    text-align: left;
+    background: #efefef;
+    color: #888;
+    padding: 7px;
+    border-bottom: 1px dotted #ddd;
+  }
+  #config tr:hover td {
+    background: #f8f8f8;
+  }
+  #config table input,
+  #config table select,
+  #config table button {
+    padding: 5px;
+    width: 100%;
+  }
+  #config fieldset > button {
+    font-size: 16px;
+    float: right;
+  }
+#config button[type="submit"] {
+  font-size: 20px;
+  float: right;
 }

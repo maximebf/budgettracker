@@ -1,8 +1,12 @@
 {% extends "layout.html" %}
 {% block title %}Login{% endblock %}
+{% block page_header %}
+<div id="header">
+  <h1>BudgetTracker</h1>
+</div>
+{% endblock %}
 {% block page %}
-  <form method="post" action="">
-    <input type="password" name="code" placeholder="Code">
-    <button type="submit">Go</button>
+  <form method="post" action="" id="login">
+    <input type="password" name="code" placeholder="Code" autofocus>
   </form>
 {% endblock %}

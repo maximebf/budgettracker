@@ -3,7 +3,7 @@
   <li>
     <span class="date">{{tx.date.strftime('%d %b')}}</span>
     <span class="label" title="{{tx.label}}">{{tx.label}}</span>
-    <span class="amount">{{tx.amount}}€</span>
+    <span class="amount {{ 'pos' if tx.amount >= 0 else 'neg' }}">{{tx.amount}}€</span>
   </li>
   {% endfor %}
 </ul>
@@ -13,7 +13,7 @@
   <li>
     <span class="date">{{tx.date.strftime('%d %b')}}</span>
     <span class="label" title="{{tx.label}}">{{tx.label}}</span>
-    <span class="amount">{{tx.amount}}€</span>
+    <span class="amount {{ 'pos' if tx.amount >= 0 else 'neg' }}">{{tx.amount}}€</span>
   </li>
   {% endfor %}
 </ul>

@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from monthdelta import monthdelta
-import datetime, functools, json
+import datetime, functools, json, unicodecsv, StringIO
+from ..budget import IncomeSource, RecurringExpense, SavingsGoal
 from ..helpers import CONFIG_FILENAME, load_config, load_budget_of_month_from_config, load_balance, update_local_data
 
 
@@ -81,9 +82,23 @@ def transactions(year, month):
     return jsonify(map(lambda tx: tx.to_dict(), budget.transactions))
 
 
+@app.route('/<int:year>-<int:month>/transactions.csv')
+@requires_passcode
+def transactions_csv(year, month):
+    date = datetime.date(year, month, 1)
+    budget = load_budget_of_month_from_config(config, date)
+    out = StringIO.StringIO()
+    writer = unicodecsv.writer(out)
+    for tx in budget.transactions:
+        writer.writerow(tx)
+    return out.getvalue(), {"Content-Disposition": "attachment; filename=%s-%s.csv" % (year, month),
+                 "Content-Type": "text/csv"}
+
+
 @app.route('/refresh', methods=['POST'])
 def refresh():
     update_local_data(config)
+    return redirect(url_for('index'))
 
 
 @app.route('/config', methods=['GET', 'POST'])
@@ -91,11 +106,30 @@ def refresh():
 def edit_config():
     global config
     if request.method == 'POST':
+        income_sources = map(lambda a: IncomeSource(*a), zip(request.form.getlist('income_sources_label'),
+          request.form.getlist('income_sources_amount', float),
+          request.form.getlist('income_sources_match')))
+        recurring_expenses = map(lambda a: RecurringExpense(*a), zip(request.form.getlist('recurring_expenses_label'),
+          request.form.getlist('recurring_expenses_amount', float),
+          request.form.getlist('recurring_expenses_recurrence'),
+          request.form.getlist('recurring_expenses_match')))
+        savings_goals = map(lambda a: SavingsGoal(*a), zip(request.form.getlist('savings_goals_label'),
+          request.form.getlist('savings_goals_amount', float)))
+
+        config.update(
+          income_sources=map(lambda s: s.to_dict(), income_sources),
+          recurring_expenses=map(lambda e: e.to_dict(), recurring_expenses),
+          savings_goals=map(lambda g: g.to_dict(), savings_goals))
+
         try:
-            config = json.loads(request.form['config'])
             with open(CONFIG_FILENAME, 'w') as f:
-                json.dump(config, f, indent=2, sort_keys=True)
+                json.dump(config, f, indent=2, sort_keys=2)
             return redirect(url_for('index'))
         except:
             pass
-    return render_template('config.html', config=json.dumps(config, indent=2, sort_keys=True))
+
+    return render_template('config.html',
+        config=config,
+        income_sources=map(IncomeSource.from_dict, config.get('income_sources', [])),
+        recurring_expenses=map(RecurringExpense.from_dict, config.get('recurring_expenses', [])),
+        savings_goals=map(SavingsGoal.from_dict, config.get('savings_goals', [])))

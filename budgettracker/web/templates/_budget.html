@@ -1,72 +1,74 @@
-<div id="top">
+<div class="budget">
+  <div class="header">
+    {% if not next_date %}
+    <div>
+      <div class="title">
+        Safe to spend
+        <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
+      </div>
+      <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{budget.expected_remaining}}€</div>
+    </div>
+    {% else %}
+    <div>
+      <div class="title">
+        <a href="{{url_for('edit_config')}}">Savings</a>
+        <span class="tooltip">?<span>Savings made after <em>expected recurring expenses</em> are taken into account. If negative then amount used from the savings to cover this month.</span></span>
+      </div>
+      <div class="value {{ 'neg' if budget.savings <= 0 else ('warn' if budget.savings < budget.savings_goal else 'pos') }}">
+        {{'{0:+}'.format(budget.savings)}}€
+      </div>
+    </div>
+    {% endif %}
+  </div>
   {% if not next_date %}
-  <div id="safe_to_spend">
-    <div class="title">
-      Safe to spend
-      <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
-    </div>
-    <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{budget.expected_remaining}}€</div>
-  </div>
+    <p class="big">
+      <label><a href="{{url_for('edit_config')}}">Savings</a></label>
+      <span class="value {{ 'neg' if budget.expected_savings <= 0 else ('warn' if budget.expected_savings < budget.savings_goal else 'pos') }}">
+        {{budget.expected_savings}}€ {% if budget.savings_goal > 0 %}/ {{budget.savings_goal}}€
+        ({{ (max(budget.expected_savings, 0) * 100 / budget.savings_goal)|int }}%){% endif %}
+      </span>
+    </p>
   {% else %}
-  <div id="savings">
-    <div class="title">
-      Savings
-      <span class="tooltip">?<span>Savings made after <em>expected recurring expenses</em> are taken into account</span></span>
-    </div>
-    <div class="value {{ 'neg' if budget.savings <= 0 else ('warn' if budget.savings < budget.savings_goal else 'pos') }}">
-      {{'{0:+}'.format(budget.savings)}}€
-    </div>
-  </div>
+  <p class="big">
+    <label>
+      Budget Balance
+      <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all recurring expenses are taken into account)</span></span>
+    </label>
+    <span class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{'{0:+}'.format(budget.balance)}}€</span>
+  </p>
   {% endif %}
-</div>
-{% if not next_date %}
-  <p id="savings" class="big">
-    <label>Savings</label>
-    <span class="value {{ 'neg' if budget.expected_savings <= 0 else ('warn' if budget.expected_savings < budget.savings_goal else 'pos') }}">
-      {{budget.expected_savings}}€ / {{budget.savings_goal}}€
-      ({{ (max(budget.expected_savings, 0) * 100 / budget.savings_goal)|int }}%)
+  <p>
+    <label>Real Balance</label>
+    <span class="value {{ 'neg' if budget.real_balance < 0 else 'pos' }}">{{'{0:+}'.format(budget.real_balance)}}€</span>
+  </p>
+  <p>
+    <label>
+      <a href="{{url_for('edit_config')}}">Income</a>
+      <span class="tooltip">?<span><em>Expected income</em> is used unless month is finished or income higher than expected</span></span>
+    </label>
+    <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
+      {{max(budget.expected_income, budget.income) if not next_date else budget.income }}€
+      {% if budget.income > budget.expected_income %}
+        (+{{budget.income - budget.expected_income}}€)
+      {% elif budget.income < budget.expected_income %}
+        (-{{budget.expected_income - budget.income}}€)
+      {% endif %}
     </span>
   </p>
-{% else %}
-<p id="budget_balance" class="big">
-  <label>
-    Budget Balance
-    <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all recurring expenses are taken into account)</span></span>
-  </label>
-  <span class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{'{0:+}'.format(budget.balance)}}€</span>
-</p>
-{% endif %}
-<p id="real_balance">
-  <label>Real Balance</label>
-  <span class="value {{ 'neg' if budget.real_balance < 0 else 'pos' }}">{{'{0:+}'.format(budget.real_balance)}}€</span>
-</p>
-<p id="income">
-  <label>
-    Income
-    <span class="tooltip">?<span><em>Expected income</em> is used unless month is finished or income higher than expected</span></span>
-  </label>
-  <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
-    {{max(budget.expected_income, budget.income) if not next_date else budget.income }}€
-    {% if budget.income > budget.expected_income %}
-      (+{{budget.income - budget.expected_income}}€)
-    {% elif budget.income < budget.expected_income %}
-      (-{{budget.expected_income - budget.income}}€)
-    {% endif %}
-  </span>
-</p>
-<p id="recurring_expenses">
-  <label>
-    Recurring expenses
-    <span class="tooltip">?<span><em>Expected recurring expenses</em> is used for calculations. The number in brackets is the actual amount of recurring expenses detected during this month</span></span>
-  </label>
-  <span class="value neg">
-    {{budget.expected_recurring_expenses}}€ ({{budget.recurring_expenses}}€)
-  </span>
-</p>
-<p id="expenses">
-  <label>
-    Expenses
-    <span class="tooltip">?<span>Does not include recurring expenses</span></span>
-  </label>
-  <span class="value neg">{{budget.expenses}}€</span>
-</p>
+  <p>
+    <label>
+      <a href="{{url_for('edit_config')}}">Recurring expenses</a>
+      <span class="tooltip">?<span><em>Expected recurring expenses</em> is used for calculations. The number in brackets is the actual amount of recurring expenses detected during this month</span></span>
+    </label>
+    <span class="value neg">
+      {{budget.expected_recurring_expenses}}€ ({{budget.recurring_expenses}}€)
+    </span>
+  </p>
+  <p>
+    <label>
+      Expenses
+      <span class="tooltip">?<span>Does not include recurring expenses</span></span>
+    </label>
+    <span class="value neg">{{budget.expenses}}€</span>
+  </p>
+</div>
