@@ -58,16 +58,17 @@ def index(year=None, month=None):
 def budget(year, month):
     date = datetime.date(year, month, 1)
     budget = load_budget_of_month_from_config(config, date)
-    return jsonify(balance=budget.balance,
+    return jsonify(real_balance=budget.real_balance,
+                   balance=budget.balance,
                    income=budget.income,
                    recurring_expenses=budget.recurring_expenses,
                    expenses=budget.expenses,
                    savings=budget.savings,
                    savings_goal=budget.savings_goal,
+                   expected_real_balance=budget.expected_real_balance,
+                   expected_balance=budget.expected_balance,
                    expected_income=budget.expected_income,
                    expected_recurring_expenses=budget.expected_recurring_expenses,
-                   expected_available=budget.expected_available,
-                   expected_expenses=budget.expected_expenses,
                    expected_savings=budget.expected_savings,
                    expected_remaining=budget.expected_remaining)
 
@@ -93,8 +94,8 @@ def edit_config():
         try:
             config = json.loads(request.form['config'])
             with open(CONFIG_FILENAME, 'w') as f:
-                json.dump(config, f, indent=2, sort_key=True)
+                json.dump(config, f, indent=2, sort_keys=True)
             return redirect(url_for('index'))
         except:
             pass
-    return render_template('config.html', config=json.dumps(config, indent=2))
+    return render_template('config.html', config=json.dumps(config, indent=2, sort_keys=True))

@@ -1,6 +1,6 @@
 import requests, time, os, json, datetime
 from .data import dump_transactions, load_transactions, extract_inter_account_transactions
-from .budget import budgetize
+from .budget import budgetize, RecurringExpense
 from monthdelta import monthdelta
 
 
@@ -85,10 +85,11 @@ def load_transactions_of_month(date, refresh=False, adapter=None, session=None, 
 
 
 def make_budget_from_config(transactions, config):
-    _, transactions = extract_inter_account_transactions(transactions,
-            config['inter_account_labels_out'], config['inter_account_labels_in'])
-    return budgetize(transactions, config.get('expected_income', 0), config.get('expected_recurring_expenses', 0),
-        config.get('recurring_expenses_labels', []), config.get('savings_goal', 0))
+    if 'inter_account_labels_out' in config and 'inter_account_labels_in' in config:
+        _, transactions = extract_inter_account_transactions(transactions,
+                config['inter_account_labels_out'], config['inter_account_labels_in'])
+    recurring_expenses = map(RecurringExpense.from_dict, config.get('recurring_expenses', []))
+    return budgetize(transactions, config.get('expected_income', 0), recurring_expenses, config.get('savings_goal', 0))
 
 
 def load_budget_of_month_from_config(config, date, refresh=False, adapter=None, session=None):
