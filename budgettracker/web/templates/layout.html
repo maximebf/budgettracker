@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}{% endblock %} | BudgetTracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+    <link rel="icon" sizes="192x192" type="img/png" href="{{url_for('static', filename='icon.png')}}">
+    <link rel="apple-touch-icon" href="{{url_for('static', filename='icon.png')}}">
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    {% block body %}
+      {% block header %}{% endblock %}
+      <div id="page">
+        {% block page %}{% endblock %}
+      </div>
+      {% block footer %}{% endblock %}
+    {% endblock %}
+  </body>
+</html>

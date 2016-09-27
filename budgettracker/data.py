@@ -1,13 +1,46 @@
 # -*- coding: utf-8 -*-
-import datetime, json, os, time, unicodecsv
+import datetime, json, os, time, unicodecsv, re
 from collections import namedtuple
 
 
-Account = namedtuple('Account', ['id', 'title', 'amount'])
-Transaction = namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'account'])
+class Account(namedtuple('Account', ['id', 'title', 'amount'])):
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(**dct)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'amount': self.amount
+        }
 
 
-class TransactionList(list):
+class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'account'])):
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(
+            id=dct['id'],
+            label=dct['label'],
+            date=datetime.date(*map(int, dct['date'].split('-'))),
+            amount=dct['amount'],
+            account=dct['account']
+        )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'label': self.label,
+            'date': self.date.isoformat(),
+            'amount': self.amount,
+            'account': self.account
+        }
+
+    def __unicode__(self):
+        return u"%s - %s = %s€" % (self.date.isoformat(), self.label, self.amount)
+
+
+class SummableList(list):
     @property
     def sum(self):
         return sum([tx.amount for tx in iter(self)])
@@ -17,19 +50,19 @@ class TransactionList(list):
         return abs(self.sum)
 
 
-def transaction_to_dict(tx):
-    return {
-        'id': tx.id,
-        'label': tx.label,
-        'date': tx.date.isoformat(),
-        'amount': tx.amount,
-        'account': tx.account
-    }
+def dump_accounts(accounts, filename):
+    with open(filename, 'w') as f:
+        json.dump(map(lambda acc: acc.to_dict(), accounts), f, indent=2)
+
+
+def load_accounts(filename):
+    with open(filename) as f:
+        return json.load(f, object_hook=lambda dct: Account.from_dict(dct))
 
 
 def dump_transactions(transactions, filename):
     with open(filename, 'w') as f:
-        json.dump(map(lambda tx: transaction_to_dict(tx), transactions), f, indent=2)
+        json.dump(map(lambda tx: tx.to_dict(), transactions), f, indent=2)
 
 
 def dump_transactions_csv(transactions, filename):
@@ -41,32 +74,51 @@ def dump_transactions_csv(transactions, filename):
 
 def load_transactions(filename):
     with open(filename) as f:
-        return TransactionList(json.load(f, object_hook=lambda dct: Transaction(
-            id=dct['id'],
-            label=dct['label'],
-            date=datetime.date(*map(int, dct['date'].split('-'))),
-            amount=dct['amount'],
-            account=dct['account']
-        )))
+        return SummableList(json.load(f, object_hook=lambda dct: Transaction.from_dict(dct)))
 
 
-def format_transaction(transaction):
-    return u"%s - %s = %s€" % (transaction.date.isoformat(), transaction.label, transaction.amount)
+def filter_transactions(func, transactions):
+    return SummableList(filter(func, transactions))
 
 
-def account_to_dict(acc):
-    return {
-        'id': acc.id,
-        'title': acc.title,
-        'amount': acc.amount
-    }
+def filter_out_transactions(transactions, remove_transactions):
+    return SummableList(filter(lambda tx: tx not in remove_transactions, transactions))
 
 
-def dump_accounts(accounts, filename):
-    with open(filename, 'w') as f:
-        json.dump(map(lambda acc: account_to_dict(acc), accounts), f, indent=2)
+def split_income_expenses(transactions):
+    income = SummableList(filter(lambda tx: tx.amount > 0.0, transactions))
+    expenses = SummableList(filter(lambda tx: tx.amount < 0.0, transactions))
+    return income, expenses
 
 
-def load_accounts(filename):
-    with open(filename) as f:
-        return json.load(f, object_hook=lambda dct: Account(**dct))
+def extract_inter_account_transactions(transactions, labels_out, labels_in):
+    tx_out = {}
+    tx_in = {}
+    for tx in transactions:
+        m = re.match(labels_out, tx.label)
+        if m:
+            tx_out[m.group('id')] = tx
+            continue
+        m = re.match(labels_in, tx.label)
+        if m:
+            tx_in[m.group('id')] = tx
+
+    inter_account_transactions = set()
+    for id, tx in tx_out.iteritems():
+        if id in tx_in:
+            inter_account_transactions.add(tx)
+            inter_account_transactions.add(tx_in[id])
+
+    transactions = filter_out_transactions(transactions, inter_account_transactions)
+    return inter_account_transactions, transactions
+
+
+def extract_transactions_by_label(transactions, labels):
+    def filter(tx):
+        for exp in labels:
+            if re.match(exp, tx.label):
+                return True
+        return False
+    matching = filter_transactions(filter, transactions)
+    transactions = filter_out_transactions(transactions, matching)
+    return matching, transactions

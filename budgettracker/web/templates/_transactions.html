@@ -1,0 +1,19 @@
+<ul class="transactions">
+  {% for tx in budget.transactions[:10] %}
+  <li>
+    <span class="date">{{tx.date.strftime('%d %b')}}</span>
+    <span class="label" title="{{tx.label}}">{{tx.label}}</span>
+    <span class="amount">{{tx.amount}}€</span>
+  </li>
+  {% endfor %}
+</ul>
+<a id="showMore" href="javascript:" onclick="showAllTransactions()">more</a>
+<ul class="transactions hidden">
+  {% for tx in budget.transactions[10:] %}
+  <li>
+    <span class="date">{{tx.date.strftime('%d %b')}}</span>
+    <span class="label" title="{{tx.label}}">{{tx.label}}</span>
+    <span class="amount">{{tx.amount}}€</span>
+  </li>
+  {% endfor %}
+</ul>

@@ -24,7 +24,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        budgettracker=budgettracker
-        budgettracker-web=budgettracker.web
+        budgettracker=budgettracker.cli:main
     '''
 )

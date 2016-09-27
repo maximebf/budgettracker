@@ -1,14 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Config | BudgetTracker</title>
-    {% include "_headers.html" %}
-  </head>
-  <body>
-    <form method="post" action="" id="page">
-      <textarea name="config" rows="40">{{config}}</textarea>
-      <button type="submit">Go</button>
-    </form>
-  </body>
-</html>
+{% extends "layout.html" %}
+{% block title %}Config{% endblock %}
+{% block page %}
+  <form method="post" action="">
+    <textarea name="config" rows="40">{{config}}</textarea>
+    <button type="submit">Go</button>
+  </form>
+{% endblock %}

@@ -1,139 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>{{date.strftime('%B %Y')}} | BudgetTracker</title>
-    {% include "_headers.html" %}
-    <script>
-      function showAllTransactions() {
-        document.querySelector('.transactions.hidden').classList.remove('hidden');
-        document.querySelector('#showMore').remove();
-      }
-    </script>
-  </head>
-  <body>
-    <div id="page">
-      <div id="header">
-        <a href="/{{prev_date.year}}-{{prev_date.month}}">&laquo;</a>
-        <h1 id="month">{{date.strftime('%B %Y')}}</h1>
-        {% if next_date %}<a href="/{{next_date.year}}-{{next_date.month}}">&raquo;</a>{% endif %}
-      </div>
-      <div id="balance">
-        {% if not next_date %}
-        <div>
-          <div class="title">
-            Available
-            <span class="tooltip">?<span>Amount available accross all accounts</span></span>
-          </div>
-          <div class="value">{{balance}}€</div>
-        </div>
-        <div>
-          <div class="title">
-            Safe to spend
-            <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
-          </div>
-          <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{budget.expected_remaining}}€</div>
-        </div>
-        {% else %}
-        <div>
-          {% set budget_balance = budget.income - budget.expected_recurring_expenses - budget.expenses - budget.savings_goal %}
-          <div class="title">
-            Budget Balance
-            <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all recurring expenses are taken into account)</span></span>
-          </div>
-          <div class="value {{ 'neg' if budget_balance <= 0 else 'pos' }}">{{budget_balance}}€</div>
-        </div>
-        <div>
-          <div class="title">
-            Real Balance
-          </div>
-          <div class="value {{ 'neg' if budget.balance <= 0 else 'pos' }}">{{budget.balance}}€</div>
-        </div>
-        {% endif %}
-      </div>
-      {% if not next_date %}
-      <p id="budget_balance" class="big">
-        {% set balance = max(budget.income, budget.expected_income) - budget.expected_recurring_expenses - budget.expenses - budget.savings_goal %}
-        <label>
-          Budget Balance
-          <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all recurring expenses are taken into account)</span></span>
-        </label>
-        <span class="value {{ 'neg' if balance < 0 else 'pos' }}">{{balance}}€</span>
-      </p>
-      <p id="real_balance">
-        <label>Real Balance</label>
-        <span class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{budget.balance}}€</span>
-      </p>
-      {% endif %}
-      <p id="income">
-        <label>
-          Income
-          <span class="tooltip">?<span><em>Expected income</em> is used unless month is finished or income higher than expected</span></span>
-        </label>
-        <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
-          {{max(budget.expected_income, budget.income) if not next_date else budget.income }}€
-          {% if budget.income > budget.expected_income %}
-            (+{{budget.income - budget.expected_income}}€)
-          {% elif budget.income < budget.expected_income %}
-            (-{{budget.expected_income - budget.income}}€)
-          {% endif %}
-        </span>
-      </p>
-      <p id="recurring_expenses">
-        <label>
-          Recurring expenses
-          <span class="tooltip">?<span><em>Expected recurring expenses</em> is used for calculations. The number in brackets is the actual amount of recurring expenses detected during this month</span></span>
-        </label>
-        <span class="value neg">
-          {{max(budget.expected_recurring_expenses, budget.recurring_expenses)}}€
-          {% if budget.recurring_expenses < budget.expected_recurring_expenses %}({{budget.recurring_expenses}}€){% endif %}
-        </span>
-      </p>
-      <p id="expenses">
-        <label>
-          Expenses
-          <span class="tooltip">?<span>Does not include recurring expenses</span></span>
-        </label>
-        <span class="value neg">{{budget.expenses}}€</span>
-      </p>
-      <p id="savings">
-        <label>Savings</label>
-        {% if not next_date %}
-        <span class="value {{ 'neg' if budget.expected_savings == 0 else ('pos' if budget.expected_savings == budget.savings_goal else 'warn') }}">
-          {{budget.expected_savings}}€ / {{budget.savings_goal}}€ ({{ (budget.expected_savings * 100 / budget.savings_goal)|int }}%)
-        </span>
-        {% else %}
-        <span class="value {{ 'neg' if budget.savings == 0 else ('pos' if budget.savings >= budget.savings_goal else 'warn') }}">
-          {{budget.savings}}€ / {{budget.savings_goal}}€
-        </span>
-        {% endif %}
-      </p>
-      <hr>
-      <ul class="transactions">
-        {% for tx in budget.transactions[:10] %}
-        <li>
-          <span class="date">{{tx.date.strftime('%d %b')}}</span>
-          <span class="label" title="{{tx.label}}">{{tx.label}}</span>
-          <span class="amount">{{tx.amount}}€</span>
-        </li>
-        {% endfor %}
-      </ul>
-      <a id="showMore" href="javascript:" onclick="showAllTransactions()">more</a>
-      <ul class="transactions hidden">
-        {% for tx in budget.transactions[10:] %}
-        <li>
-          <span class="date">{{tx.date.strftime('%d %b')}}</span>
-          <span class="label" title="{{tx.label}}">{{tx.label}}</span>
-          <span class="amount">{{tx.amount}}€</span>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-    <div id="footer">
-      <a href="{{url_for('budget', year=date.year, month=date.month)}}">budget.json</a> -
-      <a href="{{url_for('transactions', year=date.year, month=date.month)}}">transactions.json</a> -
-      <a href="{{url_for('edit_config')}}">config</a> -
-      <a href="{{url_for('logout')}}">logout</a>
-    </div>
-  </body>
-</html>
+{% extends "layout.html" %}
+{% block title %}{{date.strftime('%B %Y')}}{% endblock %}
+{% block head %}
+  <script>
+    function showAllTransactions() {
+      document.querySelector('.transactions.hidden').classList.remove('hidden');
+      document.querySelector('#showMore').remove();
+    }
+  </script>
+{% endblock %}
+{% block page %}
+  <div id="available">
+    {{account_balance}}€
+  </div>
+  <div id="header">
+    <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
+    <h1 id="month">{{date.strftime('%B %Y')}}</h1>
+    {% if not next_date %}
+      <form action="{{url_for('refresh')}}" method="POST">
+        <button type="submit" title="Update data">R</button>
+      </form>
+    {% else %}
+      <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
+    {% endif %}
+  </div>
+  {% include "_budget.html" %}
+  <hr>
+  {% include "_transactions.html" %}
+{% endblock %}
+{% block footer %}
+  <div id="footer">
+    <a href="{{url_for('budget', year=date.year, month=date.month)}}">budget.json</a> -
+    <a href="{{url_for('transactions', year=date.year, month=date.month)}}">transactions.json</a> -
+    <a href="{{url_for('edit_config')}}">config</a> -
+    <a href="{{url_for('logout')}}">logout</a>
+  </div>
+{% endblock %}
