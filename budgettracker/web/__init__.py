@@ -96,6 +96,7 @@ def transactions_csv(year, month):
 
 
 @app.route('/refresh', methods=['POST'])
+@requires_passcode
 def refresh():
     update_local_data(config)
     return redirect(url_for('index'))

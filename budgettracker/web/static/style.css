@@ -63,6 +63,7 @@ hr {
   border-radius: 7px;
   padding: 10px;
   background: #fff;
+  overflow: hidden;
 }
 
 #available {
@@ -236,7 +237,7 @@ hr {
   #page {
     border: 0;
     border-radius: 0;
-    margin: 0;
+    margin-top: 0;
     padding: 5px;
   }
   .transactions li .label {
