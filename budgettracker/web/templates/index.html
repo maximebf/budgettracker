@@ -27,8 +27,10 @@
 {% block page %}
   {% if budget %}
     {% include "_budget.html" %}
+    {% if budget.transactions %}
     <hr>
     {% include "_transactions.html" %}
+    {% endif %}
   {% else %}
     <p id="nodata">No data for this month</p>
   {% endif %}

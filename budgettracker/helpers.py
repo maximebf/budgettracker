@@ -112,12 +112,20 @@ def notify_using_config(config, message):
         adapter.send(session, config['notify_numbers'], message)
 
 
-def update_local_data(config, notify=True):
-    date = datetime.date.today().replace(day=1)
+def update_local_data(config, notify=True, date=None, adapter=None, session=None):
+    if not adapter:
+        adapter, session = create_adapter_and_session_from_config(config)
+
+    if not date:
+        if datetime.date.today().day <= 5:
+            # if we are still in the early days of a new month, keep updating the previous month
+            update_local_data(config, False, datetime.date.today() - monthdelta(1), adapter, session)
+        date = datetime.date.today().replace(day=1)
+
     prev_budget = load_budget_of_month_from_config(config, date)
-    adapter, session = create_adapter_and_session_from_config(config)
     budget = load_budget_of_month_from_config(config, date, refresh=True, adapter=adapter, session=session)
     save_balance(adapter, session)
+
     if notify and prev_budget:
         if config.get('notify_remaining') and prev_budget.expected_remaining > config['notify_remaining'] and budget.expected_remaining <= config['notify_remaining']:
             notify_using_config(config, 'BUDGET: /!\ LOW SAFE TO SPEND: %se' % budget.expected_remaining)

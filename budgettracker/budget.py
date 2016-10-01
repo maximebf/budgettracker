@@ -1,5 +1,5 @@
 from collections import namedtuple
-from .data import split_income_expenses, extract_transactions_by_label, SummableList
+from .data import split_income_expenses, extract_transactions_by_label
 
 
 Budget = namedtuple('Budget', ['transactions', 'income_transactions', 'recurring_expenses_transactions',
@@ -62,15 +62,15 @@ class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
 
 def budgetize(transactions, income_sources=None, recurring_expenses=None, savings_goals=None):
     income_transactions, expenses_transactions = split_income_expenses(transactions)
-    real_balance = transactions.sum
-    income = income_transactions.sum
-    expenses = expenses_transactions.abs_sum
+    real_balance = sum([tx.amount for tx in transactions])
+    income = sum([tx.amount for tx in income_transactions])
+    expenses = abs(sum([tx.amount for tx in expenses_transactions]))
 
     expected_income = 0
     if income_sources:
       expected_income = sum([src.amount for src in income_sources])
 
-    recurring_expenses_transactions = SummableList()
+    recurring_expenses_transactions = []
     expected_recurring_expenses = 0
     if recurring_expenses:
         recurring_expenses_labels = [exp.match for exp in recurring_expenses if exp.match]
@@ -82,7 +82,7 @@ def budgetize(transactions, income_sources=None, recurring_expenses=None, saving
     if savings_goals:
         savings_goal = sum([s.amount for s in savings_goals]) / 12
     
-    recurring_expenses = recurring_expenses_transactions.abs_sum
+    recurring_expenses = abs(sum([tx.amount for tx in recurring_expenses_transactions]))
     savings = income - expected_recurring_expenses - expenses
     balance = savings - savings_goal
 

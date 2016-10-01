@@ -2,7 +2,8 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from monthdelta import monthdelta
 import datetime, functools, json, unicodecsv, StringIO
 from ..budget import IncomeSource, RecurringExpense, SavingsGoal
-from ..helpers import CONFIG_FILENAME, load_config, load_budget_of_month_from_config, load_balance, update_local_data
+from ..helpers import (CONFIG_FILENAME, load_config, make_budget_from_config,
+                       load_budget_of_month_from_config, load_balance, update_local_data)
 
 
 app = Flask(__name__)
@@ -45,12 +46,17 @@ def index(year=None, month=None):
         date = datetime.date(year, month, 1)
     else:
         date = current
+
+    budget = load_budget_of_month_from_config(config, date)
+    if not budget and date == current:
+        budget = make_budget_from_config([], config)
+
     return render_template('index.html',
       date=date,
       prev_date=(date - monthdelta(1)),
       next_date=(date + monthdelta(1)) if date < current else None,
       account_balance=load_balance(),
-      budget=load_budget_of_month_from_config(config, date),
+      budget=budget,
       max=max)
 
 

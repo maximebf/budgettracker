@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import requests, bs4, datetime
-from budgettracker.data import Account, Transaction, SummableList
+from budgettracker.data import Account, Transaction
 
 
 BANKIN_URL = 'https://bankin.com'
@@ -36,7 +36,7 @@ def fetch_transactions(session, account, start_date=None, end_date=None):
     fetch_from = 0
     fetch_incr = 50
     fetch_more = True
-    transactions = SummableList()
+    transactions = []
     current_year = datetime.date.today().year
     month_mapping = ['JAN', 'FEV', 'MAR', 'AVR', 'MAI', 'JUIN',
                      'JUIL', 'AOUT', 'SEPT', 'OCT', 'NOV', 'DEC']
@@ -87,4 +87,4 @@ def fetch_transactions_from_all_accounts(session, start_date=None, end_date=None
     transactions = []
     for account in fetch_accounts(session):
         transactions.extend(fetch_transactions(session, account, start_date, end_date))
-    return SummableList(sorted(transactions, key=lambda i: i.date, reverse=True))
+    return sorted(transactions, key=lambda i: i.date, reverse=True)

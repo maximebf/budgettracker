@@ -40,16 +40,6 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
         return u"%s - %s = %s€" % (self.date.isoformat(), self.label, self.amount)
 
 
-class SummableList(list):
-    @property
-    def sum(self):
-        return sum([tx.amount for tx in iter(self)])
-
-    @property
-    def abs_sum(self):
-        return abs(self.sum)
-
-
 def dump_accounts(accounts, filename):
     with open(filename, 'w') as f:
         json.dump(map(lambda acc: acc.to_dict(), accounts), f, indent=2)
@@ -74,20 +64,20 @@ def dump_transactions_csv(transactions, filename):
 
 def load_transactions(filename):
     with open(filename) as f:
-        return SummableList(json.load(f, object_hook=lambda dct: Transaction.from_dict(dct)))
+        return json.load(f, object_hook=lambda dct: Transaction.from_dict(dct))
 
 
 def filter_transactions(func, transactions):
-    return SummableList(filter(func, transactions))
+    return filter(func, transactions)
 
 
 def filter_out_transactions(transactions, remove_transactions):
-    return SummableList(filter(lambda tx: tx not in remove_transactions, transactions))
+    return filter(lambda tx: tx not in remove_transactions, transactions)
 
 
 def split_income_expenses(transactions):
-    income = SummableList(filter(lambda tx: tx.amount > 0.0, transactions))
-    expenses = SummableList(filter(lambda tx: tx.amount < 0.0, transactions))
+    income = filter(lambda tx: tx.amount > 0.0, transactions)
+    expenses = filter(lambda tx: tx.amount < 0.0, transactions)
     return income, expenses
 
 
