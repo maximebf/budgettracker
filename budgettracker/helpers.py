@@ -84,24 +84,38 @@ def load_transactions_of_month(date, refresh=False, adapter=None, session=None, 
     return None
 
 
-def make_budget_from_config(transactions, config):
+def make_budget_from_config(transactions, config, start_date=None, end_date=None):
     if 'inter_account_labels_out' in config and 'inter_account_labels_in' in config:
         _, transactions = extract_inter_account_transactions(transactions,
                 config['inter_account_labels_out'], config['inter_account_labels_in'])
+
     income_sources = map(IncomeSource.from_dict, config.get('income_sources', []))
+    income_delay = config.get('income_delay', 0)
     recurring_expenses = map(RecurringExpense.from_dict, config.get('recurring_expenses', []))
     savings_goals = map(SavingsGoal.from_dict, config.get('savings_goals', []))
-    return budgetize(transactions, income_sources, recurring_expenses, savings_goals)
+
+    return budgetize(transactions, income_sources, recurring_expenses, savings_goals,
+        start_date, end_date, income_delay)
 
 
 def load_budget_of_month_from_config(config, date, refresh=False, adapter=None, session=None):
     if refresh and not adapter and not session:
         adapter, session = create_adapter_and_session_from_config(config)
+
+    start_date = date.replace(day=1)
+    end_date = start_date + monthdelta(1)
+
     transactions = load_transactions_of_month(date, refresh=refresh, adapter=adapter,
         session=session, directory=config.get('transactions_dir'))
     if transactions is None:
         return None
-    return make_budget_from_config(transactions, config)
+
+    if config.get('income_delay'):
+        next_transactions = load_transactions_of_month(end_date, directory=config.get('transactions_dir'))
+        if next_transactions:
+            transactions.extend(next_transactions)
+
+    return make_budget_from_config(transactions, config, start_date, end_date)
 
 
 def notify_using_config(config, message):

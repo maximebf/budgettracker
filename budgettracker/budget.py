@@ -1,5 +1,6 @@
 from collections import namedtuple
-from .data import split_income_expenses, extract_transactions_by_label
+from .data import split_income_expenses, extract_transactions_by_label, filter_transactions_period, sort_transactions
+import datetime
 
 
 Budget = namedtuple('Budget', ['transactions', 'income_transactions', 'recurring_expenses_transactions',
@@ -60,8 +61,16 @@ class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
                 "amount": self.amount}
 
 
-def budgetize(transactions, income_sources=None, recurring_expenses=None, savings_goals=None):
-    income_transactions, expenses_transactions = split_income_expenses(transactions)
+def budgetize(transactions, income_sources=None, recurring_expenses=None, savings_goals=None,
+              start_date=None, end_date=None, income_delay=0):
+    if start_date and end_date and income_delay:
+      income_transactions, _ = split_income_expenses(filter_transactions_period(
+        transactions, start_date + datetime.timedelta(days=income_delay), end_date + datetime.timedelta(days=income_delay)))
+      _, expenses_transactions = split_income_expenses(filter_transactions_period(transactions, start_date, end_date))
+      transactions = sort_transactions(income_transactions + expenses_transactions)
+    else:
+      transactions = sort_transactions(filter_transactions_period(transactions, start_date, end_date))
+      income_transactions, expenses_transactions = split_income_expenses(transactions)
 
     expected_income = 0
     if income_sources:

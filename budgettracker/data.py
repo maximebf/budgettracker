@@ -75,9 +75,21 @@ def filter_out_transactions(transactions, remove_transactions):
     return filter(lambda tx: tx not in remove_transactions, transactions)
 
 
+def filter_transactions_period(transactions, start_date=None, end_date=None):
+    if not start_date and not end_date:
+        return transactions
+    return filter_transactions(
+        lambda tx: (not start_date or tx.date >= start_date) and (not end_date or tx.date < end_date),
+        transactions)
+
+
+def sort_transactions(transactions):
+    return sorted(transactions, key=lambda tx: tx.date, reverse=True)
+
+
 def split_income_expenses(transactions):
     income = filter(lambda tx: tx.amount > 0.0, transactions)
-    expenses = filter(lambda tx: tx.amount < 0.0, transactions)
+    expenses = filter(lambda tx: tx.amount <= 0.0, transactions)
     return income, expenses
 
 
