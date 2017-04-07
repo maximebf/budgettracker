@@ -2,15 +2,28 @@
 {% block title %}{{date.strftime('%B %Y')}}{% endblock %}
 {% block head %}
   <script>
+    function toggleAccounts() {
+      document.querySelector('#accounts').classList.toggle('open');
+    }
     function showAllTransactions() {
       document.querySelector('.transactions.hidden').classList.remove('hidden');
-      document.querySelector('#showMore').remove();
+      document.querySelector('#show-more').remove();
     }
   </script>
 {% endblock %}
 {% block page_header %}
-  <div id="available">
-    {{account_balance or 0}}€
+  <div id="accounts" onclick="toggleAccounts()">
+    <div class="balance">{{account_balance or 0}}{{config['CURRENCY']}}</div>
+    <div class="yearly-savings">
+      Savings this year: {{budgets.savings}}{{config['CURRENCY']}} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}})
+    </div>
+    <table>
+      {% for acc in accounts %}
+      <tr>
+        <td>{{acc.title}}</td><td>{{acc.amount}}{{config['CURRENCY']}}</td>
+      </tr>
+      {% endfor %}
+    </table>
   </div>
   <div id="header">
     <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>

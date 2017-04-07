@@ -2,7 +2,7 @@
   <li>
     <span class="date">{{tx.date.strftime('%d %b')}}</span>
     <span class="label" title="{{tx.label}}">{{tx.label}}</span>
-    <span class="amount {{ 'warn' if is_recurring else ('pos' if tx.amount >= 0 else 'neg') }}">{{tx.amount}}€</span>
+    <span class="amount {{ 'warn' if is_recurring else ('pos' if tx.amount >= 0 else 'neg') }}">{{tx.amount}}{{config['CURRENCY']}}</span>
   </li>
 {%- endmacro %}
 
@@ -12,7 +12,7 @@
   {% endfor %}
 </ul>
 {% if budget.transactions|length > 10 %}
-<a id="showMore" href="javascript:" onclick="showAllTransactions()">more</a>
+<a id="show-more" href="javascript:" onclick="showAllTransactions()">more</a>
 <ul class="transactions hidden">
   {% for tx in budget.transactions[10:] %}
     {{ transaction(tx, tx in budget.recurring_expenses_transactions) }}

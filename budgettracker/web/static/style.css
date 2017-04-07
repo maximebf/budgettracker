@@ -66,7 +66,7 @@ hr {
   overflow: hidden;
 }
 
-#available {
+#accounts {
   margin: -10px -10px 0;
   padding: 10px;
   text-align: center;
@@ -77,7 +77,35 @@ hr {
   font-size: 20px;
   font-weight: bold;
   font-family: monospace;
+  cursor: pointer;
 }
+  #accounts > .yearly-savings {
+    display: none;
+    margin-top: 10px;
+    font-size: 16px;
+  }
+  #accounts.open > .yearly-savings {
+    display: block;
+  }
+  #accounts > table {
+    display: none;
+    text-align: left;
+    font-weight: normal;
+    margin: 22px auto;
+    padding: 0;
+    list-style: none;
+    max-width: 80%;
+    font-size: 14px;
+    border: 0;
+    border-top: 1px dotted #8bc3f9;
+  }
+    #accounts > table td {
+      border-bottom: 1px dotted #8bc3f9;
+      padding: 4px 0;
+    }
+  #accounts.open > table {
+    display: table;
+  }
 
 #header {
   margin: -10px -10px 30px;
@@ -91,7 +119,7 @@ hr {
   display: flex;
   align-items: center;
 }
-#available + #header {
+#accounts + #header {
   margin-top: 0;
   border-radius: 0;
 }
@@ -204,7 +232,7 @@ hr {
       font-weight: bold;
     }
 
-#showMore {
+#show-more {
   display: block;
   text-align: center;
   padding: 5px;

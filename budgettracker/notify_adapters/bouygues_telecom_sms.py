@@ -20,12 +20,14 @@ def login(session, username, password):
     return session
 
 
-def send(session, numbers, message):
+def send(config, message):
+    session = login(requests.Session(), config['notify_username'], config['notify_password'])
+
     r = session.get('https://www.secure.bbox.bouyguestelecom.fr/services/SMSIHD/sendSMS.phtml')
     r.raise_for_status()
 
     r = session.post('https://www.secure.bbox.bouyguestelecom.fr/services/SMSIHD/confirmSendSMS.phtml', data={
-        'fieldMsisdn': ";".join(numbers),
+        'fieldMsisdn': ";".join(config['notify_numbers']),
         'fieldMessage': message,
         'Verif.x': 54,
         'Verif.y': 12

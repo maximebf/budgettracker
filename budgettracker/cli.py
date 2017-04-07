@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from .data import dump_transactions, load_transactions
-from .helpers import (load_config, load_adapter, create_adapter_and_session_from_config, save_balance,
-                      load_balance, load_budget_of_month_from_config, update_local_data)
+from .helpers import (load_config, load_adapter, create_adapter_and_session_from_config,
+                      load_accounts_from_config, load_monthly_budget_from_config, update_local_data,
+                      load_yearly_budgets_from_config, notify_using_config)
 import requests, datetime, sys, os
 from getopt import getopt
 
@@ -22,7 +23,7 @@ def update():
     update_local_data(config)
 
 
-@command('', ['update'])
+@command('', ['month=', 'year=', 'refresh'])
 def show(month=None, year=None, refresh=False):
     if not month:
         month = datetime.date.today().month
@@ -34,39 +35,43 @@ def show(month=None, year=None, refresh=False):
     if refresh:
         update_local_data(config)
 
-    balance = load_balance()
-    budget = load_budget_of_month_from_config(config, date)
+    balance = sum([a.amount for a in load_accounts_from_config(config)])
+    budgets = load_yearly_budgets_from_config(config, date)
+    budget = budgets.get_from_date(date)
+    
+    cur = config.get('currency', '$')
+    tx_formatter = lambda tx: tx.to_str(cur)
 
-    print date.strftime("%B %Y")
+    print budget.month.strftime("%B %Y")
     print 
-    print "Income = %s€" % budget.income
-    print u"\n".join(map(unicode, budget.income_transactions))
+    print u"Income = %s%s (expected = %s%s)" % (budget.income, cur, budget.expected_income, cur)
+    print u"\n".join(map(tx_formatter, budget.income_transactions))
     print
-    print "Recurring expenses = %s€" % budget.recurring_expenses
-    print u"\n".join(map(unicode, budget.recurring_expenses_transactions))
+    print u"Recurring expenses = %s%s (expected = %s%s)" % (budget.recurring_expenses, cur, budget.expected_recurring_expenses, cur)
+    print u"\n".join(map(tx_formatter, budget.recurring_expenses_transactions))
     print
-    print "Expenses = %s€" % budget.expenses
-    print u"\n".join(map(unicode, budget.expenses_transactions))
+    print u"Expenses = %s%s" % (budget.expenses, cur)
+    print u"\n".join(map(tx_formatter, budget.expenses_transactions))
     print
     print "-----------------------------------------"
-    print date.strftime("%B %Y")
+    print budget.month.strftime("%B %Y")
     print "-----------------------------------------"
-    print "Available            = {0}€".format(balance)
+    print u"Available             = {0}{1}".format(balance, cur)
+    print u"Yearly savings        = {0}{1}".format(budgets.savings, cur)
     print "-----------------------------------------"
-    print "Income               = {0}€ ({1:+}€)".format(budget.income, budget.income - budget.expected_income)
-    print "Recurring expenses   = {0}€ ({1:+}€)".format(budget.expected_recurring_expenses, budget.recurring_expenses)
-    print "Expenses             = {0}€".format(budget.expenses)
+    print u"Income                = {0}{1} ({2:+}{3})".format(budget.expected_income, cur, budget.income - budget.expected_income, cur)
+    print u"Recurring expenses    = {0}{1} ({2}{3})".format(budget.expected_recurring_expenses, cur, budget.recurring_expenses, cur)
+    print u"Expenses              = {0}{1}".format(budget.expenses, cur)
     if is_current_month:
-        print "Real Balance         = {0:+}€".format(budget.expected_real_balance)
+        print u"Real Balance          = {0:+}{1}".format(budget.expected_real_balance, cur)
         print "-----------------------------------------"
-        print "Budget balance       = {0:+}€".format(budget.expected_balance)
-        print "Savings              = {0}€ / {1}€".format(budget.expected_savings, budget.savings_goal)
-        print "Safe to spend        = {0}€".format(budget.expected_remaining)
+        print u"Savings               = {0}{1} / {2}{3}".format(budget.expected_savings, cur, budget.savings_goal, cur)
+        print u"Safe to spend         = {0}{1}".format(budget.expected_remaining, cur)
     else:
-        print "Real Balance         = {0:+}€".format(budget.real_balance)
+        print u"Real Balance          = {0:+}{1}".format(budget.real_balance, cur)
         print "-----------------------------------------"
-        print "Savings              = {0}€ / {1}€".format(budget.savings, budget.savings_goal)
-        print "Budget balance       = {0:+}€".format(budget.balance)
+        print u"Savings               = {0}{1} / {2}{3}".format(budget.savings, cur, budget.savings_goal, cur)
+        print u"Budget balance        = {0:+}{1}".format(budget.balance, cur)
 
 
 @command('', ['port=', 'debug'])
@@ -74,6 +79,11 @@ def web(port=5000, debug=False):
     from .web import app
     app.run(port=port, debug=debug)
 
+
+@command()
+def notify(message):
+    notify_using_config(config, message)
+    
 
 def main(as_module=False):
     this_module = __package__

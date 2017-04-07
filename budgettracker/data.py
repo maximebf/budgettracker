@@ -36,8 +36,11 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
             'account': self.account
         }
 
+    def to_str(self, currency=''):
+        return u"%s - %s = %s%s" % (self.date.isoformat(), self.label, self.amount, currency)
+
     def __unicode__(self):
-        return u"%s - %s = %s€" % (self.date.isoformat(), self.label, self.amount)
+        return self.to_str()
 
 
 def dump_accounts(accounts, filename):

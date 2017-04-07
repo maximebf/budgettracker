@@ -1,12 +1,111 @@
 from collections import namedtuple
 from .data import split_income_expenses, extract_transactions_by_label, filter_transactions_period, sort_transactions
 import datetime
+from monthdelta import monthdelta
 
 
-Budget = namedtuple('Budget', ['transactions', 'income_transactions', 'recurring_expenses_transactions',
+class Budget(namedtuple('Budget', ['month', 'transactions', 'income_transactions', 'recurring_expenses_transactions',
     'expenses_transactions', 'real_balance', 'balance', 'income', 'recurring_expenses', 'expenses',
     'savings',  'savings_goal', 'expected_real_balance', 'expected_balance', 'expected_income',
-    'expected_recurring_expenses', 'expected_savings', 'expected_remaining'])
+    'expected_recurring_expenses', 'expected_savings', 'expected_remaining'])):
+
+    def to_dict(self, with_transactions=True):
+        dct = {
+            "month": self.month,
+            "real_balance": self.real_balance,
+            "balance": self.balance,
+            "income": self.income,
+            "recurring_expenses": self.recurring_expenses,
+            "expenses": self.expenses,
+            "savings": self.savings,
+            "savings_goal": self.savings_goal,
+            "expected_real_balance": self.expected_real_balance,
+            "expected_balance": self.expected_balance,
+            "expected_income": self.expected_income,
+            "expected_recurring_expenses": self.expected_recurring_expenses,
+            "expected_savings": self.expected_savings,
+            "expected_remaining": self.expected_remaining
+        }
+        if with_transactions:
+            dct.update({
+                "transactions": self.transactions,
+                "income_transactions": self.income_transactions,
+                "recurring_expenses_transactions": self.recurring_expenses_transactions,
+                "expenses_transactions": self.expenses_transactions
+            })
+        return dct
+
+
+class BudgetList(list):
+    def _aggregate_transactions(self, key):
+        tx = []
+        for budget in self:
+            tx.extend(getattr(budget, key))
+        return tx
+
+    def _sum(self, key):
+        total = 0
+        current = datetime.date.today().replace(day=1)
+        for budget in self:
+            if budget.month == current and not key.startswith('expected_') and hasattr(budget, 'expected_%s' % key):
+                total += getattr(budget, 'expected_%s' % key)
+            else:
+                total += getattr(budget, key)
+        return total
+
+    @property
+    def transactions(self):
+        return self._aggregate_transactions('transactions')
+
+    @property
+    def income_transactions(self):
+        return self._aggregate_transactions('income_transactions')
+
+    @property
+    def recurring_expenses_transactions(self):
+        return self._aggregate_transactions('recurring_expenses_transactions')
+
+    @property
+    def expenses_transactions(self):
+        return self._aggregate_transactions('expenses_transactions')
+    
+    @property
+    def real_balance(self):
+        return self._sum('real_balance')
+    
+    @property
+    def balance(self):
+        return self._sum('balance')
+    
+    @property
+    def income(self):
+        return self._sum('income')
+    
+    @property
+    def recurring_expenses(self):
+        return self._sum('recurring_expenses')
+    
+    @property
+    def expenses(self):
+        return self._sum('expenses')
+    
+    @property
+    def savings(self):
+        return self._sum('savings')
+
+    @property
+    def savings_goal(self):
+        return self._sum('savings_goal')
+
+    def get_from_date(self, date):
+        date = date.replace(day=1)
+        for budget in self:
+            if budget.month == date:
+                return budget
+
+    @property
+    def current(self):
+        return self.get_from_date(datetime.date.today())
 
 
 class IncomeSource(namedtuple('IncomeSource', ['label', 'amount', 'match'])):
@@ -15,9 +114,11 @@ class IncomeSource(namedtuple('IncomeSource', ['label', 'amount', 'match'])):
         return cls(label=dct['label'], amount=dct['amount'], match=dct.get('match'))
 
     def to_dict(self):
-        return {"label": self.label,
-                "amount": self.amount,
-                "match": self.match}
+        return {
+            "label": self.label,
+            "amount": self.amount,
+            "match": self.match
+        }
 
 
 class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recurrence', 'match'])):
@@ -45,10 +146,12 @@ class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recur
         ]).get(self.recurrence, self.recurrence)
 
     def to_dict(self):
-        return {"label": self.label,
-                "amount": self.amount,
-                "recurrence": self.recurrence_label,
-                "match": self.match}
+        return {
+            "label": self.label,
+            "amount": self.amount,
+            "recurrence": self.recurrence_label,
+            "match": self.match
+        }
 
 
 class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
@@ -57,20 +160,39 @@ class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
         return cls(**dct)
 
     def to_dict(self):
-        return {"label": self.label,
-                "amount": self.amount}
+        return {
+            "label": self.label,
+            "amount": self.amount
+        }
 
 
-def budgetize(transactions, income_sources=None, recurring_expenses=None, savings_goals=None,
-              start_date=None, end_date=None, income_delay=0):
-    if start_date and end_date and income_delay:
-      income_transactions, _ = split_income_expenses(filter_transactions_period(
+def period_to_months(start_date, end_date):
+    dates = [start_date.replace(day=1)]
+    end_date = end_date.replace(day=1) - monthdelta(1)
+    while dates[-1] < end_date:
+        dates.append(dates[-1] + monthdelta(1))
+    return dates
+
+
+def budgetize(transactions, start_date, end_date, *args, **kwargs):
+    budgets = BudgetList()
+    for date in period_to_months(start_date, end_date):
+        budgets.append(budgetize_month(transactions, date, *args, **kwargs))
+    return budgets
+
+
+def budgetize_month(transactions, date, income_sources=None, recurring_expenses=None, savings_goals=None, income_delay=0):
+    start_date = date.replace(day=1)
+    end_date = start_date + monthdelta(1)
+
+    if income_delay:
+        income_transactions, _ = split_income_expenses(filter_transactions_period(
         transactions, start_date + datetime.timedelta(days=income_delay), end_date + datetime.timedelta(days=income_delay)))
-      _, expenses_transactions = split_income_expenses(filter_transactions_period(transactions, start_date, end_date))
-      transactions = sort_transactions(income_transactions + expenses_transactions)
+        _, expenses_transactions = split_income_expenses(filter_transactions_period(transactions, start_date, end_date))
+        transactions = sort_transactions(income_transactions + expenses_transactions)
     else:
-      transactions = sort_transactions(filter_transactions_period(transactions, start_date, end_date))
-      income_transactions, expenses_transactions = split_income_expenses(transactions)
+        transactions = sort_transactions(filter_transactions_period(transactions, start_date, end_date))
+        income_transactions, expenses_transactions = split_income_expenses(transactions)
 
     expected_income = 0
     if income_sources:
@@ -100,7 +222,8 @@ def budgetize(transactions, income_sources=None, recurring_expenses=None, saving
     expected_balance = expected_savings - savings_goal
     expected_remaining = max(expected_balance, 0)
 
-    return Budget(transactions=transactions,
+    return Budget(month=start_date,
+                  transactions=transactions,
                   income_transactions=income_transactions,
                   recurring_expenses_transactions=recurring_expenses_transactions,
                   expenses_transactions=expenses_transactions,
