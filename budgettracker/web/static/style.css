@@ -81,7 +81,7 @@ hr {
 }
   #accounts > .yearly-savings {
     display: none;
-    margin-top: 10px;
+    margin: 20px 0;
     font-size: 16px;
   }
   #accounts.open > .yearly-savings {
@@ -89,19 +89,31 @@ hr {
   }
   #accounts > table {
     display: none;
-    text-align: left;
+    text-align: right;
     font-weight: normal;
     margin: 22px auto;
     padding: 0;
     list-style: none;
-    max-width: 80%;
+    width: 80%;
     font-size: 14px;
     border: 0;
     border-top: 1px dotted #8bc3f9;
   }
-    #accounts > table td {
+    #accounts > table td,
+    #accounts > table th {
       border-bottom: 1px dotted #8bc3f9;
-      padding: 4px 0;
+      padding: 4px;
+    }
+    #accounts > table th {
+      padding: 6px 4px;
+      background: #5296d6;
+    }
+    #accounts > table th:first-child {
+      font-size: 16px;
+      text-align: left;
+    }
+    #accounts > table td:first-child {
+      text-align: left;
     }
   #accounts.open > table {
     display: table;
@@ -214,26 +226,62 @@ hr {
   .transactions li {
     margin-bottom: 10px;
     padding: 0;
+    display: flex;
+    align-items: center;
   }
-    .transactions li .date {
+    .transactions li > span {
       display: inline-block;
+    }
+    .transactions li .date {
+      flex: 0 0 auto;
       margin-right: 10px;
       color: #888;
       float: left;
     }
     .transactions li .label {
-      max-width: 510px;
-      display: inline-block;
+      flex: 1 1 auto;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .transactions li .category {
+      flex: 0 0 15px;
+      height: 15px;
+      margin: 0 5px;
+      text-indent: -9999px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #eee;
+    }
+    .transactions li .category:hover {
+      box-shadow: 0 0 3px rgba(0, 0, 0, .5);
+    }
+    .transactions li .goal {
+      flex: 0 0 15px;
+      margin: 0 5px;
+      cursor: pointer;
+      color: #777;
+    }
     .transactions li .amount {
-      float: right;
+      flex: 0 0 70px;
       font-family: monospace;
       font-size: 14px;
       font-weight: bold;
+      text-align: right;
     }
+
+#categories-bar {
+  height: 10px;
+  border: 1px solid #efefef;
+  width: 100%;
+  margin: 20px 0;
+  display: flex;
+}
+  #categories-bar > span {
+    flex: 1 1 auto;
+    height: 100%;
+    border: 1px solid #fff;
+  }
 
 #show-more {
   display: block;
@@ -346,3 +394,53 @@ hr {
   font-size: 20px;
   float: right;
 }
+
+#transaction-options {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+#transaction-options.visible {
+  display: block;
+}
+  #transaction-options > .backdrop {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    opacity: .5;
+    background: #fff;
+    z-index: 1000;
+  }
+  #transaction-options form {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    width: 500px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #eee;
+    box-shadow: 0 0 15px rgba(0, 0, 0, .1);
+    z-index: 1001;
+  }
+    #transaction-options fieldset {
+      border: 0;
+      padding: 0;
+      margin: 0 0 10px;
+    }
+    #transaction-options legend {
+      font-weight: bold;
+      color: #444;
+      margin-bottom: 5px;
+    }
+    #transaction-options label {
+      display: block;
+      padding: 4px 6px;
+      margin: 5px 0;
+      border-radius: 3px;
+    }

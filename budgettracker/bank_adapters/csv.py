@@ -40,7 +40,9 @@ def fetch_transactions(session, account, start_date=None, end_date=None):
             label=re.sub("\s+", " ", row[1].replace("\n", " ").strip()),
             date=date,
             amount=float(row[3]),
-            account=row[4]))
+            account=row[4],
+            categories=[],
+            goal=None))
 
     return transactions
 

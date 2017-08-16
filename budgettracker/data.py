@@ -16,7 +16,7 @@ class Account(namedtuple('Account', ['id', 'title', 'amount'])):
         }
 
 
-class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'account'])):
+class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'account', 'categories', 'goal'])):
     @classmethod
     def from_dict(cls, dct):
         return cls(
@@ -24,8 +24,13 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
             label=dct['label'],
             date=datetime.date(*map(int, dct['date'].split('-'))),
             amount=dct['amount'],
-            account=dct['account']
+            account=dct['account'],
+            categories=dct.get('categories') or [],
+            goal=dct.get('goal')
         )
+
+    def update(self, **kwargs):
+        return Transaction(**dict(self._asdict(), **kwargs))
 
     def to_dict(self):
         return {
@@ -33,11 +38,18 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
             'label': self.label,
             'date': self.date.isoformat(),
             'amount': self.amount,
-            'account': self.account
+            'account': self.account,
+            'categories': self.categories,
+            'goal': self.goal
         }
 
+    def to_csv(self):
+        return [self.id, self.label, self.date.isoformat(), self.amount, ', '.join(self.categories), self.goal]
+
     def to_str(self, currency=''):
-        return u"%s - %s = %s%s" % (self.date.isoformat(), self.label, self.amount, currency)
+        return u"%s - %s = %s%s%s%s" % (self.date.isoformat(), self.label, self.amount, currency,
+            ' #%s' % ', #'.join(self.categories) if self.categories else '',
+            ' [%s%s]' % (self.goal, currency) if self.goal else '')
 
     def __unicode__(self):
         return self.to_str()
@@ -62,12 +74,26 @@ def dump_transactions_csv(transactions, filename):
     with open(filename, 'w') as f:
         writer = unicodecsv.writer(f)
         for tx in transactions:
-            writer.writerow(tx)
+            writer.writerow(tx.to_csv())
 
 
 def load_transactions(filename):
     with open(filename) as f:
         return json.load(f, object_hook=lambda dct: Transaction.from_dict(dct))
+
+
+def update_transactions(old_transactions, new_transactions):
+    old = {tx.id: tx for tx in old_transactions}
+    final = []
+    for tx in new_transactions:
+        if tx.id in old:
+            final.append(tx.update(
+                categories=old[tx.id].categories,
+                goal=old[tx.id].goal
+            ))
+        else:
+            final.append(tx)
+    return final
 
 
 def filter_transactions(func, transactions):
@@ -108,11 +134,11 @@ def extract_inter_account_transactions(transactions, labels_out, labels_in):
         if m:
             tx_in[m.group('id')] = tx
 
-    inter_account_transactions = set()
+    inter_account_transactions = []
     for id, tx in tx_out.iteritems():
         if id in tx_in:
-            inter_account_transactions.add(tx)
-            inter_account_transactions.add(tx_in[id])
+            inter_account_transactions.append(tx)
+            inter_account_transactions.append(tx_in[id])
 
     transactions = filter_out_transactions(transactions, inter_account_transactions)
     return inter_account_transactions, transactions

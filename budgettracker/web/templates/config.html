@@ -1,5 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}Config{% endblock %}
+{% block head %}
+  <script src="{{url_for('static', filename='jscolor.min.js')}}"></script>
+{% endblock %}
 {% block page %}
   <form id="config" action="" method="POST">
     <fieldset>
@@ -121,6 +124,35 @@
         </tr>
       </template>
       <button type="button" onclick="addTemplateRow('savings_goals')">&oplus; Add</button>
+    </fieldset>
+    <fieldset>
+      <legend>Categories</legend>
+      <table id="categories">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th width="100">Color</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category in categories %}
+          <tr>
+            <td><input type="text" value="{{category.name}}" name="categories_name" required></td>
+            <td><input type="text" class="jscolor" value="{{category.color}}" name="categories_color"></td>
+            <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <template id="categories_row">
+        <tr>
+          <td><input type="text" value="" name="categories_name" required></td>
+          <td><input type="text" class="jscolor" value="" name="categories_color"></td>
+          <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
+        </tr>
+      </template>
+      <button type="button" onclick="addTemplateRow('categories')">&oplus; Add</button>
     </fieldset>
     <button type="submit">Save</button>
   </form>

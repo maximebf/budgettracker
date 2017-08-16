@@ -39,7 +39,9 @@ def fetch_transactions(session, account, start_date=None, end_date=None):
             label="%s %s" % (re.sub("\s+", " ", tx.payee.strip()), re.sub("\s+", " ", tx.memo.strip())),
             date=tx.date.date(),
             amount=float(tx.amount),
-            account=str(account.id)))
+            account=str(account.id),
+            categories=[],
+            goal=None))
 
     return transactions
 

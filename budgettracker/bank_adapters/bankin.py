@@ -77,7 +77,9 @@ def fetch_transactions(session, account, start_date=None, end_date=None):
                 label=unicode(tx.select('.nom > span.note')[0].string),
                 date=date,
                 amount=float(unicode(tx.select('p.price > span')[0].string).strip(u' €').replace(u' ', u'')),
-                account=account.id))
+                account=account.id,
+                categories=[],
+                goal=None))
 
         fetch_from += fetch_incr
 

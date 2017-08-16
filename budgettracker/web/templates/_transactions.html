@@ -1,7 +1,18 @@
 {% macro transaction(tx, is_recurring=False) -%}
-  <li>
+  <li data-tx-id="{{tx.id}}" data-tx-amount="{{tx.amount}}">
     <span class="date">{{tx.date.strftime('%d %b')}}</span>
     <span class="label" title="{{tx.label}}">{{tx.label}}</span>
+    {% if tx.goal %}
+      <span class="goal" title="{{tx.goal}}" onclick="showTransactionOptions(event)">&#9733;</span>
+    {% endif %}
+    {% if tx.categories %}
+      {% for category in tx.categories %}
+        <span class="category" title="{{category}}" style="background-color: {{category_colors.get(category) or '#eee'}}"
+          onclick="showTransactionOptions(event)">{{category}}</span>
+      {% endfor %}
+    {% else %}
+      <span class="category" onclick="showTransactionOptions(event)"></span>
+    {% endif %}
     <span class="amount {{ 'warn' if is_recurring else ('pos' if tx.amount >= 0 else 'neg') }}">{{tx.amount}}{{config['CURRENCY']}}</span>
   </li>
 {%- endmacro %}

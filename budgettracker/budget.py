@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from .data import split_income_expenses, extract_transactions_by_label, filter_transactions_period, sort_transactions
 import datetime
 from monthdelta import monthdelta
@@ -169,11 +169,59 @@ class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
     def from_dict(cls, dct):
         return cls(**dct)
 
+    @property
+    def amount_per_month(self):
+        return round(self.amount / 12, 0)
+
     def to_dict(self):
         return {
             "label": self.label,
             "amount": self.amount
         }
+
+
+class ComputedSavingsGoal(namedtuple('ComputedSavingsGoal', ['label', 'target', 'saved', 'used'])):
+    @classmethod
+    def from_savings_goal(cls, goal, **kwargs):
+        return cls(label=goal.label, target=goal.amount, **kwargs)
+
+    @property
+    def remaining(self):
+        return max(self.target - self.saved, 0)
+
+    @property
+    def completed(self):
+        return self.remaining == 0
+
+    @property
+    def completed_pct(self):
+        return round(self.saved * 100 / self.target, 0)
+
+    @property
+    def used_pct(self):
+        return round(self.used * 100 / self.target, 0)
+
+    @property
+    def amount_per_month(self):
+        return min(round(self.target / 12, 0), self.remaining)
+
+
+class Category(namedtuple('Category', ['name', 'color'])):
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(name=dct['name'], color=dct.get('color'))
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'color': self.color
+        }
+
+
+class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'amount', 'pct'])):
+    @classmethod
+    def from_category(cls, category, **kwargs):
+        return cls(name=category.name, color=category.color, **kwargs)
 
 
 def period_to_months(start_date, end_date):
@@ -182,6 +230,71 @@ def period_to_months(start_date, end_date):
     while dates[-1] < end_date:
         dates.append(dates[-1] + monthdelta(1))
     return dates
+
+
+def compute_savings_goals(budgets, savings_goals):
+    amounts = {}
+    for tx in budgets.transactions:
+        if tx.goal:
+            amounts.setdefault(tx.goal, 0)
+            amounts[tx.goal] += tx.amount
+
+    used = {}
+    saved = {}
+    for goal in savings_goals:
+        used[goal.label] = 0
+        saved[goal.label] = 0
+
+    remaining_goals = list(savings_goals)
+    current_month = datetime.datetime.now().replace(day=1).date()
+    for i, budget in enumerate(budgets):
+        if budget.month >= current_month:
+            break
+        for tx in budget.transactions:
+            if tx.goal and tx.goal in used and tx.amount < 0:
+                used[tx.goal] += abs(tx.amount)
+        savings_per_goal = budget.savings / len(remaining_goals)
+        for goal in savings_goals:
+            if goal not in remaining_goals:
+                continue
+            saved[goal.label] = min(saved[goal.label] + savings_per_goal, goal.amount)
+            if saved[goal.label] == goal.amount:
+                remaining_goals.remove(goal)
+
+    computed = []
+    for goal in savings_goals:
+        computed.append(ComputedSavingsGoal.from_savings_goal(goal,
+            saved=saved[goal.label], used=used[goal.label]))
+    return computed
+
+
+def compute_categories(transactions, categories=None, start_date=None, end_date=None):
+    categories = {c.name: c for c in categories or []}
+    amounts = {}
+    total = 0
+    for tx in filter_transactions_period(transactions, start_date, end_date):
+        if tx.amount >= 0:
+            continue
+        total += abs(tx.amount)
+        for name in (tx.categories or []):
+            amounts.setdefault(name, 0)
+            amounts[name] += abs(tx.amount)
+    categorized_total = sum(amounts.values())
+    if total - categorized_total > 0:
+        amounts[None] = total - categorized_total
+
+    final = []
+    for name, amount in sorted(amounts.items(), key=lambda t: t[0]):
+        pct = round(amount * 100 / total, 0)
+        if name in categories:
+            final.append(ComputedCategory.from_category(categories[name], amount=amount, pct=pct))
+        else:
+            final.append(ComputedCategory(name=name, color=None, amount=amount, pct=pct))
+    for category in categories.values():
+        if category.name not in amounts:
+            final.append(ComputedCategory.from_category(category, amount=0, pct=0))
+
+    return final
 
 
 def budgetize(transactions, start_date, end_date, *args, **kwargs):
@@ -225,7 +338,7 @@ def budgetize_month(transactions, date, income_sources=None, recurring_expenses=
 
     savings_goal = 0
     if savings_goals:
-        savings_goal = sum([s.amount for s in savings_goals]) / 12
+        savings_goal = sum([s.amount_per_month for s in savings_goals])
     
     real_balance = sum([tx.amount for tx in transactions])
     income = sum([tx.amount for tx in income_transactions])

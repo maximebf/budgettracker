@@ -3,7 +3,8 @@ from .data import dump_transactions, load_transactions
 from .utils import load_config
 from .helpers import (create_adapter_and_session_from_config, load_accounts_from_config,
                       load_monthly_budget_from_config, update_local_data,
-                      load_yearly_budgets_from_config, notify_using_config)
+                      load_yearly_budgets_from_config, notify_using_config,
+                      compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config)
 import requests, datetime, sys, os, json
 from getopt import getopt
 
@@ -19,8 +20,8 @@ def command(options='', long_options=None):
     return decorator
 
 
-@command('', ['month=', 'year='])
-def update(filename=None, month=None, year=None):
+@command('', ['month=', 'year=', 'reset'])
+def update(filename=None, month=None, year=None, reset=False):
     date = None
     if month or year:
         if not month:
@@ -28,7 +29,7 @@ def update(filename=None, month=None, year=None):
         if not year:
             year = datetime.date.today().year
         date = datetime.date(int(year), int(month), 1)
-    update_local_data(config, date=date, filename=filename)
+    update_local_data(config, date=date, filename=filename, reset=reset)
 
 
 @command('', ['month=', 'year=', 'refresh'])
@@ -46,21 +47,33 @@ def show(month=None, year=None, refresh=False):
     balance = sum([a.amount for a in load_accounts_from_config(config)])
     budgets = load_yearly_budgets_from_config(config, date)
     budget = budgets.get_from_date(date)
+    categories = compute_monthly_categories_from_config(config, date)
+    goals = compute_yearly_savings_goals_from_config(config, date)
     
     cur = config.get('currency', '$')
     tx_formatter = lambda tx: tx.to_str(cur)
+    category_formatter = lambda c: "%s = %s%s (%s%%)" % (c.name or 'Uncategorized', c.amount, cur, c.pct)
+    goal_formatter = lambda g: "%s = %s%s / %s%s (%s%%) [used: %s (%s%%)]" % (g.label, g.saved, cur, g.target, cur, g.completed_pct, g.used, g.used_pct)
 
     print budget.month.strftime("%B %Y")
     print 
-    print u"Income = %s%s (expected = %s%s)" % (budget.income, cur, budget.expected_income, cur)
+    print u"Income = %s%s (expected = %s%s):" % (budget.income, cur, budget.expected_income, cur)
     print u"\n".join(map(tx_formatter, budget.income_transactions))
     print
-    print u"Recurring expenses = %s%s (expected = %s%s)" % (budget.recurring_expenses, cur, budget.expected_recurring_expenses, cur)
+    print u"Recurring expenses = %s%s (expected = %s%s):" % (budget.recurring_expenses, cur, budget.expected_recurring_expenses, cur)
     print u"\n".join(map(tx_formatter, budget.recurring_expenses_transactions))
     print
-    print u"Expenses = %s%s" % (budget.expenses, cur)
+    print u"Expenses = %s%s:" % (budget.expenses, cur)
     print u"\n".join(map(tx_formatter, budget.expenses_transactions))
     print
+    if categories:
+        print u"Categories:"
+        print u"\n".join(map(category_formatter, categories))
+        print
+    if goals:
+        print u"Savings goals:"
+        print u"\n".join(map(goal_formatter, goals))
+        print
     print "-----------------------------------------"
     print budget.month.strftime("%B %Y")
     print "-----------------------------------------"
@@ -110,6 +123,21 @@ def remap_account_id(prev_id, new_id):
             for tx in data:
                 if tx['account'] == prev_id:
                     tx['account'] = new_id
+        with open(pathname, 'w') as f:
+            json.dump(data, f, indent=2)
+
+
+@command()
+def remap_category(old_category, new_category):
+    data_dir = config.get('data_dir', '.')
+    for filename in os.listdir(data_dir):
+        pathname = os.path.join(data_dir, filename)
+        if not os.path.isfile(pathname) or filename == 'accounts.json':
+            continue
+        with open(pathname) as f:
+            data = json.load(f)
+        for tx in data:
+            tx['categories'] = map(lambda c: new_category if c == old_category else c, tx.get('categories') or [])
         with open(pathname, 'w') as f:
             json.dump(data, f, indent=2)
     

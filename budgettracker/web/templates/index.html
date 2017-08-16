@@ -5,42 +5,154 @@
     function toggleAccounts() {
       document.querySelector('#accounts').classList.toggle('open');
     }
+
     function showAllTransactions() {
       document.querySelector('.transactions.hidden').classList.remove('hidden');
       document.querySelector('#show-more').remove();
     }
+
     function uploadFile() {
       document.querySelector('#update-form > input[type="file"]').click();
     }
+
     function submitUpdate(files) {
       if (files.length) {
         document.querySelector('#update-form').submit();
       }
+    }
+
+    var selectedTransaction;
+
+    function showTransactionOptions(event) {
+      event.stopPropagation();
+      event.preventDefault();
+      var form = document.querySelector('#transaction-options form');
+
+      selectedTransaction = event.target.parentNode;
+      form.action = form.dataset.actionBase + '/' + selectedTransaction.dataset.txId;
+      form.querySelector('h4').innerText = selectedTransaction.querySelector('.label').innerText
+        + '(' + selectedTransaction.querySelector('.amount').innerText + ')';
+
+      var categories = [];
+      selectedTransaction.querySelectorAll('.category').forEach(function(node) {
+        if (node.innerText) {
+          categories.push(node.innerText);
+        }
+      });
+      form.querySelectorAll('input[name="categories"]').forEach(function(node) {
+        node.checked = categories.indexOf(node.value) !== -1;
+      });
+
+      var goalNode = selectedTransaction.querySelector('.goal');
+      form.querySelectorAll('input[name="goal"]').forEach(function(node) {
+        if (!goalNode) {
+          node.checked = node.value == '';
+        } else {
+          node.checked = node.value == goalNode.getAttribute('title');
+        }
+      });
+
+      document.querySelector('#transaction-options').classList.add('visible');
+    }
+
+    function onTransactionOptionsFormSubmit(event) {
+      event.stopPropagation();
+      event.preventDefault();
+      var form = document.querySelector('#transaction-options form');
+
+      var req = new XMLHttpRequest();
+      req.responseType = 'json';
+      req.addEventListener("load", function() {
+        selectedTransaction.querySelectorAll('.category').forEach(function(node) {
+          node.parentNode.removeChild(node);
+        });
+        var goalNode = selectedTransaction.querySelector('.goal');
+        if (goalNode) {
+          goalNode.parentNode.removeChild(goalNode);
+        }
+        var before = selectedTransaction.querySelector('.amount');
+        form.querySelectorAll('input[name="goal"]').forEach(function(node) {
+          if (node.checked && node.value) {
+            var span = document.createElement('span');
+            span.title = node.value;
+            span.innerHTML = '&#9733;';
+            span.classList.add('goal');
+            span.onclick = showTransactionOptions;
+            selectedTransaction.insertBefore(span, before);
+          }
+        });
+        var hasCategory = false;
+        form.querySelectorAll('input[name="categories"]').forEach(function(node) {
+          if (node.checked) {
+            var span = document.createElement('span');
+            span.title = node.value;
+            span.innerText = node.value;
+            span.classList.add('category');
+            span.onclick = showTransactionOptions;
+            span.setAttribute("style", node.parentNode.getAttribute("style"));
+            selectedTransaction.insertBefore(span, before);
+            hasCategory = true;
+          }
+        });
+        if (!hasCategory) {
+          var span = document.createElement('span');
+          span.classList.add('category');
+          span.onclick = showTransactionOptions;
+          selectedTransaction.insertBefore(span, before);
+        }
+        hideTransactionOptions();
+      });
+      req.open("POST", form.action);
+      req.send(new FormData(form));
+    }
+
+    function hideTransactionOptions() {
+      document.querySelector('#transaction-options').classList.remove('visible');
     }
   </script>
 {% endblock %}
 {% block page_header %}
   <div id="accounts" onclick="toggleAccounts()">
     <div class="balance">{{account_balance or 0}}{{config['CURRENCY']}}</div>
-    <div class="yearly-savings">
-      Savings this year: {{budgets.savings}}{{config['CURRENCY']}} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}})
-    </div>
     <table>
+      <tr>
+        <th colspan="2">Accounts</th>
+      </tr>
       {% for acc in accounts %}
       <tr>
-        <td width="80%">{{acc.title}}</td><td>{{acc.amount}}{{config['CURRENCY']}}</td>
+        <td width="80%">{{acc.title}}</td>
+        <td>{{acc.amount}}{{config['CURRENCY']}}</td>
       </tr>
       {% endfor %}
     </table>
+    <table>
+      <tr>
+        <th>Savings goals</th>
+        <th width="80">Used</th>
+        <th width="80">Saved</th>
+        <th width="80">Target</th>
+      </tr>
+      {% for goal in savings_goals %}
+      <tr>
+        <td>{{goal.label}}</td>
+        <td>{{goal.used}}{{config['CURRENCY']}}</td>
+        <td>{{goal.saved}}{{config['CURRENCY']}}</td>
+        <td>{{goal.target}}{{config['CURRENCY']}}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <div class="yearly-savings">
+      Savings this year: {{budgets.savings}}{{config['CURRENCY']}} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}})
+    </div>
   </div>
   <div id="header">
     <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
     <h1 id="month">{{date.strftime('%B %Y')}}</h1>
     {% if not next_date %}
       <form action="{{url_for('update')}}" method="POST" enctype="multipart/form-data" id="update-form">
-        {% if bank_adapter_type == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
-        <button type="{{ 'submit' if bank_adapter_type == 'web' else 'button' }}" title="Update data"
-          {% if bank_adapter_type == 'file' %}onclick="uploadFile()"{% endif %}>&#8635;</button>
+        {% if bank_adapter.ADAPTER_TYPE == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
+        <button type="{{ 'submit' if bank_adapter.ADAPTER_TYPE == 'web' else 'button' }}" title="Update data ({{bank_adapter.__name__}})"
+          {% if bank_adapter.ADAPTER_TYPE == 'file' %}onclick="uploadFile()"{% endif %}>&#8635;</button>
       </form>
     {% else %}
       <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
@@ -51,7 +163,18 @@
   {% if budget %}
     {% include "_budget.html" %}
     {% if budget.transactions %}
-    <hr>
+    {% if categories %}
+      <div id="categories-bar">
+        {% for category in categories %}
+          {% if category.amount > 0 %}
+          <span title="{{category.name or 'Uncategorized'}} ({{category.amount}}{{config['CURRENCY']}}) ({{category.pct}}%)"
+            style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"></span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <hr>
+    {% endif %}
     {% include "_transactions.html" %}
     {% endif %}
   {% else %}
@@ -65,5 +188,37 @@
     <a href="{{url_for('transactions_csv', year=date.year, month=date.month)}}">transactions.csv</a> -
     <a href="{{url_for('edit_config')}}">config</a> -
     <a href="{{url_for('logout')}}">logout</a>
+  </div>
+  <div id="transaction-options">
+    <div class="backdrop" onclick="hideTransactionOptions()"></div>
+    <form method="post" data-action-base="{{url_for('index', year=date.year, month=date.month)}}"
+        onsubmit="onTransactionOptionsFormSubmit(event)">
+      <h4></h4>
+      <fieldset>
+        <legend>Categories:</legend>
+        {% for category in categories %}
+          {% if category.name %}
+            <label class="category" style="background-color: {{category.color or '#eee'}}">
+              <input type="checkbox" name="categories" value="{{category.name}}">
+              {{category.name}}
+            </label>
+          {% endif %}
+        {% endfor %}
+      </fieldset>
+      <fieldset>
+        <legend>Savings goal:</legend>
+        <label class="goal">
+          <input type="radio" name="goal" value=""> None
+        </label>
+        {% for goal in savings_goals %}
+          <label class="goal">
+            <input type="radio" name="goal" value="{{goal.label}}">
+            {{goal.label}}
+          </label>
+        {% endfor %}
+      </fieldset>
+      <button type="sumit">Save</button>
+      <button type="button" onclick="hideTransactionOptions()">Cancel</button>
+    </form>
   </div>
 {% endblock %}
