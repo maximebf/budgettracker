@@ -8,8 +8,10 @@
         <thead>
           <tr>
             <th>Label</th>
-            <th width="100">Amount</th>
+            <th width="80">Amount</th>
             <th>Match</th>
+            <th width="100">From</th>
+            <th width="100">To</th>
             <th></th>
           </tr>
         </thead>
@@ -17,8 +19,10 @@
           {% for src in income_sources %}
           <tr>
             <td><input type="text" value="{{src.label}}" name="income_sources_label" required></td>
-            <td><input type="number" value="{{src.amount}}" name="income_sources_amount" required></td>
+            <td><input type="number" value="{{src.amount}}" name="income_sources_amount" required step="any"></td>
             <td><input type="text" value="{{src.match or ''}}" name="income_sources_match"></td>
+            <td><input type="date" value="{{src.from_date.isoformat() if src.from_date else ''}}" name="income_sources_from_date"></td>
+            <td><input type="date" value="{{src.to_date.isoformat() if src.to_date else ''}}" name="income_sources_to_date"></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
@@ -27,8 +31,10 @@
       <template id="income_sources_row">
         <tr>
           <td><input type="text" value="" name="income_sources_label" required></td>
-          <td><input type="number" value="" name="income_sources_amount" required></td>
+          <td><input type="number" value="" name="income_sources_amount" required step="any"></td>
           <td><input type="text" value="" name="income_sources_match"></td>
+          <td><input type="date" value="" name="income_sources_from_date"></td>
+          <td><input type="date" value="" name="income_sources_to_date"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
@@ -43,6 +49,8 @@
             <th width="100">Amount</th>
             <th>Recurrence</th>
             <th>Match</th>
+            <th>From</th>
+            <th>To</th>
             <th></th>
           </tr>
         </thead>
@@ -59,6 +67,8 @@
               </select>
             </td>
             <td><input type="text" value="{{exp.match or ''}}" name="recurring_expenses_match"></td>
+            <td><input type="date" value="{{exp.from_date.isoformat() if exp.from_date else ''}}" name="recurring_expenses_from_date"></td>
+            <td><input type="date" value="{{exp.to_date.isoformat() if exp.to_date else ''}}" name="recurring_expenses_to_date"></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
@@ -76,6 +86,8 @@
             </select>
           </td>
           <td><input type="text" value="" name="recurring_expenses_match"></td>
+          <td><input type="date" value="" name="recurring_expenses_from_date"></td>
+          <td><input type="date" value="" name="recurring_expenses_to_date"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>

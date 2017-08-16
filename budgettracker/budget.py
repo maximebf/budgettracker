@@ -108,20 +108,25 @@ class BudgetList(list):
         return self.get_from_date(datetime.date.today())
 
 
-class IncomeSource(namedtuple('IncomeSource', ['label', 'amount', 'match'])):
+class IncomeSource(namedtuple('IncomeSource', ['label', 'amount', 'match', 'from_date', 'to_date'])):
     @classmethod
     def from_dict(cls, dct):
-        return cls(label=dct['label'], amount=dct['amount'], match=dct.get('match'))
+        from_date = datetime.datetime.strptime(dct['from_date'], '%Y-%m-%d').date() if dct.get('from_date') else None
+        to_date = datetime.datetime.strptime(dct['to_date'], '%Y-%m-%d').date() if dct.get('to_date') else None
+        return cls(label=dct['label'], amount=dct['amount'], match=dct.get('match'),
+            from_date=from_date, to_date=to_date)
 
     def to_dict(self):
         return {
             "label": self.label,
             "amount": self.amount,
-            "match": self.match
+            "match": self.match,
+            "from_date": self.from_date.isoformat() if self.from_date else None,
+            "to_date": self.to_date.isoformat() if self.to_date else None
         }
 
 
-class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recurrence', 'match'])):
+class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recurrence', 'match', 'from_date', 'to_date'])):
     WEEKLY = 0.25
     MONTHLY = 1
     YEARLY = 12
@@ -131,7 +136,10 @@ class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recur
         recurrence = dct.get('recurrence', cls.MONTHLY)
         if isinstance(recurrence, (str, unicode)):
             recurrence = getattr(cls, recurrence.upper(), 1)
-        return cls(label=dct['label'], amount=dct['amount'], recurrence=recurrence, match=dct.get('match'))
+        from_date = datetime.datetime.strptime(dct['from_date'], '%Y-%m-%d').date() if dct.get('from_date') else None
+        to_date = datetime.datetime.strptime(dct['to_date'], '%Y-%m-%d').date() if dct.get('to_date') else None
+        return cls(label=dct['label'], amount=dct['amount'], recurrence=recurrence,
+            match=dct.get('match'), from_date=from_date, to_date=to_date)
 
     @property
     def amount_per_month(self):
@@ -150,7 +158,9 @@ class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recur
             "label": self.label,
             "amount": self.amount,
             "recurrence": self.recurrence_label,
-            "match": self.match
+            "match": self.match,
+            "from_date": self.from_date.isoformat() if self.from_date else None,
+            "to_date": self.to_date.isoformat() if self.to_date else None
         }
 
 
@@ -181,6 +191,11 @@ def budgetize(transactions, start_date, end_date, *args, **kwargs):
     return budgets
 
 
+def _filter_period(objs, from_date, to_date):
+    return filter(lambda obj: (not obj.from_date or obj.from_date < from_date)\
+        and (not obj.to_date or obj.to_date >= to_date), objs)
+
+
 def budgetize_month(transactions, date, income_sources=None, recurring_expenses=None, savings_goals=None, income_delay=0):
     start_date = date.replace(day=1)
     end_date = start_date + monthdelta(1)
@@ -196,11 +211,13 @@ def budgetize_month(transactions, date, income_sources=None, recurring_expenses=
 
     expected_income = 0
     if income_sources:
-      expected_income = sum([src.amount for src in income_sources])
+        income_sources = _filter_period(income_sources, start_date, end_date)
+        expected_income = sum([src.amount for src in income_sources])
 
     recurring_expenses_transactions = []
     expected_recurring_expenses = 0
     if recurring_expenses:
+        recurring_expenses = _filter_period(recurring_expenses, start_date, end_date)
         recurring_expenses_labels = [exp.match for exp in recurring_expenses if exp.match]
         expected_recurring_expenses = sum([exp.amount_per_month for exp in recurring_expenses])
         recurring_expenses_transactions, expenses_transactions = extract_transactions_by_label(

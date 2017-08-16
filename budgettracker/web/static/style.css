@@ -56,7 +56,7 @@ hr {
   }
 
 #page {
-  width: 600px;
+  width: 700px;
   max-width: 100%;
   margin: 25px auto 15px;
   border: 1px solid #ffffff;
@@ -136,19 +136,22 @@ hr {
     text-decoration: none;
     color: #fff;
   }
-  #header > form {
-    flex: 0 0 30px;
+#update-form {
+  flex: 0 0 30px;
+}
+  #update-form > input {
+    display: none;
   }
-    #header > form > button {
-      border: 0;
-      outline: none;
-      background: transparent;
-      font-size: 28px;
-      color: #fff;
-      cursor: pointer;
-      padding: 0;
-      width: 100%;
-    }
+  #update-form > button {
+    border: 0;
+    outline: none;
+    background: transparent;
+    font-size: 28px;
+    color: #fff;
+    cursor: pointer;
+    padding: 0;
+    width: 100%;
+  }
 
 .budget > .header {
   margin: 0 0 10px;
@@ -219,7 +222,7 @@ hr {
       float: left;
     }
     .transactions li .label {
-      max-width: 410px;
+      max-width: 510px;
       display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -331,6 +334,9 @@ hr {
   #config table button {
     padding: 5px;
     width: 100%;
+  }
+  #config table input[type="date"] {
+    max-width: 100px;
   }
   #config fieldset > button {
     font-size: 16px;

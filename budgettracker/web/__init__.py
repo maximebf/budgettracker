@@ -1,13 +1,16 @@
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, abort
+from werkzeug.utils import secure_filename
 from monthdelta import monthdelta
-import datetime, functools, json, unicodecsv, StringIO
+import datetime, functools, json, unicodecsv, StringIO, os
 from ..budget import IncomeSource, RecurringExpense, SavingsGoal
-from ..helpers import (CONFIG_FILENAME, load_config, budgetize_from_config, load_yearly_budgets_from_config,
+from ..utils import CONFIG_FILENAME, load_config, load_adapter
+from ..helpers import (budgetize_from_config, load_yearly_budgets_from_config,
                        load_monthly_budget_from_config, load_accounts_from_config, update_local_data)
 
 
 app = Flask(__name__)
 config = load_config()
+bank_adapter = load_adapter('bank_adapters', config['bank_adapter'])
 app.config['SECRET_KEY'] = config['web_passcode']
 app.config['CURRENCY'] = config.get('currency', '$')
 app.config.update(config.get('web_config', {}))
@@ -59,7 +62,8 @@ def index(year=None, month=None):
         account_balance=sum([a.amount for a in accounts]),
         budgets=budgets,
         budget=budgets.get_from_date(date),
-        max=max)
+        max=max,
+        bank_adapter_type=bank_adapter.ADAPTER_TYPE)
 
 
 @app.route('/<int:year>-<int:month>/budget.json')
@@ -91,10 +95,19 @@ def transactions_csv(year, month):
                  "Content-Type": "text/csv"}
 
 
-@app.route('/refresh', methods=['POST'])
+@app.route('/update', methods=['POST'])
 @requires_passcode
-def refresh():
-    update_local_data(config)
+def update():
+    filename = None
+    if bank_adapter.ADAPTER_TYPE == 'file':
+        if 'file' not in request.files:
+            abort(400)
+        file = request.files['file']
+        filename = os.path.join(config.get('imports_dir', '.'), secure_filename(file.filename))
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
+        file.save(filename)
+    update_local_data(config, filename=filename)
     return redirect(url_for('index'))
 
 
@@ -103,20 +116,33 @@ def refresh():
 def edit_config():
     global config
     if request.method == 'POST':
-        income_sources = map(lambda a: IncomeSource(*a), zip(request.form.getlist('income_sources_label'),
-          request.form.getlist('income_sources_amount', float),
-          request.form.getlist('income_sources_match')))
-        recurring_expenses = map(lambda a: RecurringExpense(*a), zip(request.form.getlist('recurring_expenses_label'),
-          request.form.getlist('recurring_expenses_amount', float),
-          request.form.getlist('recurring_expenses_recurrence'),
-          request.form.getlist('recurring_expenses_match')))
-        savings_goals = map(lambda a: SavingsGoal(*a), zip(request.form.getlist('savings_goals_label'),
-          request.form.getlist('savings_goals_amount', float)))
+        date_cast = lambda d: datetime.datetime.strptime(d, '%Y-%m-%d').date() if d else ''
+        income_sources = map(lambda a: IncomeSource(*a), zip(
+            request.form.getlist('income_sources_label'),
+            request.form.getlist('income_sources_amount', float),
+            request.form.getlist('income_sources_match'),
+            request.form.getlist('income_sources_from_date', date_cast),
+            request.form.getlist('income_sources_to_date', date_cast)))
+        recurring_expenses = map(lambda a: RecurringExpense(*a), zip(
+            request.form.getlist('recurring_expenses_label'),
+            request.form.getlist('recurring_expenses_amount', float),
+            request.form.getlist('recurring_expenses_recurrence'),
+            request.form.getlist('recurring_expenses_match'),
+            request.form.getlist('recurring_expenses_from_date', date_cast),
+            request.form.getlist('recurring_expenses_to_date', date_cast)))
+        savings_goals = map(lambda a: SavingsGoal(*a), zip(
+            request.form.getlist('savings_goals_label'),
+            request.form.getlist('savings_goals_amount', float)))
+
+        app.logger.debug(recurring_expenses)
+        app.logger.debug(map(lambda e: e.to_dict(), recurring_expenses))
 
         config.update(
           income_sources=map(lambda s: s.to_dict(), income_sources),
           recurring_expenses=map(lambda e: e.to_dict(), recurring_expenses),
           savings_goals=map(lambda g: g.to_dict(), savings_goals))
+
+        app.logger.debug(config)
 
         try:
             with open(CONFIG_FILENAME, 'w') as f:

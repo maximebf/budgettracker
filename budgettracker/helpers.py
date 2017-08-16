@@ -1,42 +1,9 @@
-import requests, time, os, json, datetime
+import requests, time, os, datetime
 from .data import (dump_transactions, load_transactions, extract_inter_account_transactions,
                     dump_accounts, load_accounts as _load_accounts, filter_transactions_period)
 from .budget import budgetize, IncomeSource, RecurringExpense, SavingsGoal, period_to_months
+from .bank_adapters import *
 from monthdelta import monthdelta
-
-
-CONFIG_FILENAME = 'config.json'
-
-
-def load_config(filename=CONFIG_FILENAME):
-    with open(filename) as f:
-        return json.load(f)
-
-
-def load_adapter(package, name):
-    return getattr(__import__(package + '.' + name, globals(), locals(), [], -1), name)
-
-
-def create_logged_in_session(login_adapter, identifier, password, reuse=True, filename='session.json'):
-    session = requests.Session()
-    exp = time.time() - 1800 # cookie jar expires after 30min
-
-    if reuse and os.path.exists(filename) and os.path.getmtime(filename) > exp:
-        with open(filename) as f:
-            cookies = json.load(f)
-        session.cookies.update(cookies)
-    else:
-        login_adapter(session, identifier, password)
-        with open(filename, 'w') as f:
-            json.dump(session.cookies.get_dict(), f)
-
-    return session
-
-
-def create_adapter_and_session_from_config(config):
-    adapter = load_adapter('bank_adapters', config['bank_adapter'])
-    session = create_logged_in_session(adapter.login, config['bank_username'], config['bank_password'])
-    return adapter, session
 
 
 def get_accounts_filename(directory=None, filename=None):
@@ -121,9 +88,9 @@ def budgetize_from_config(transactions, start_date, end_date, config):
         savings_goals, income_delay)
 
 
-def load_monthly_budget_from_config(config, date, refresh=False, adapter=None, session=None):
+def load_monthly_budget_from_config(config, date, refresh=False, adapter=None, session=None, filename=None):
     if refresh and not adapter and not session:
-        adapter, session = create_adapter_and_session_from_config(config)
+        adapter, session = create_adapter_and_session_from_config(config, filename)
 
     start_date = date.replace(day=1)
     end_date = start_date + monthdelta(1)
@@ -156,9 +123,9 @@ def notify_using_config(config, message):
         adapter.send(config, message)
 
 
-def update_local_data(config, notify=True, date=None, adapter=None, session=None):
+def update_local_data(config, notify=True, date=None, adapter=None, session=None, filename=None):
     if not adapter:
-        adapter, session = create_adapter_and_session_from_config(config)
+        adapter, session = create_adapter_and_session_from_config(config, filename)
 
     if not date:
         if datetime.date.today().day <= 5:

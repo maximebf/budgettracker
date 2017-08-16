@@ -3,6 +3,7 @@ import requests, bs4, datetime
 from budgettracker.data import Account, Transaction
 
 
+ADAPTER_TYPE = 'web'
 BANKIN_URL = 'https://bankin.com'
 
 

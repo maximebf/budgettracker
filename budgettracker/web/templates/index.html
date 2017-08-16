@@ -9,6 +9,14 @@
       document.querySelector('.transactions.hidden').classList.remove('hidden');
       document.querySelector('#show-more').remove();
     }
+    function uploadFile() {
+      document.querySelector('#update-form > input[type="file"]').click();
+    }
+    function submitUpdate(files) {
+      if (files.length) {
+        document.querySelector('#update-form').submit();
+      }
+    }
   </script>
 {% endblock %}
 {% block page_header %}
@@ -20,7 +28,7 @@
     <table>
       {% for acc in accounts %}
       <tr>
-        <td>{{acc.title}}</td><td>{{acc.amount}}{{config['CURRENCY']}}</td>
+        <td width="80%">{{acc.title}}</td><td>{{acc.amount}}{{config['CURRENCY']}}</td>
       </tr>
       {% endfor %}
     </table>
@@ -29,8 +37,10 @@
     <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
     <h1 id="month">{{date.strftime('%B %Y')}}</h1>
     {% if not next_date %}
-      <form action="{{url_for('refresh')}}" method="POST">
-        <button type="submit" title="Update data">&#8635;</button>
+      <form action="{{url_for('update')}}" method="POST" enctype="multipart/form-data" id="update-form">
+        {% if bank_adapter_type == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
+        <button type="{{ 'submit' if bank_adapter_type == 'web' else 'button' }}" title="Update data"
+          {% if bank_adapter_type == 'file' %}onclick="uploadFile()"{% endif %}>&#8635;</button>
       </form>
     {% else %}
       <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
