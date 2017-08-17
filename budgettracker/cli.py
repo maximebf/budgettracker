@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
-from .data import dump_transactions, load_transactions
-from .utils import load_config
-from .helpers import (create_adapter_and_session_from_config, load_accounts_from_config,
-                      load_monthly_budget_from_config, update_local_data,
-                      load_yearly_budgets_from_config, notify_using_config,
-                      compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config)
-import requests, datetime, sys, os, json
+from .helpers import (load_config, update_local_data, load_yearly_budgets_from_config, notify_using_config,
+                      compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config,
+                      rematch_categories, get_storage_from_config)
+from .storage import get_storage
+import datetime, sys, os, json
 from getopt import getopt
 
 
 config = load_config()
+storage = get_storage_from_config(config)
 commands = {}
 
 
@@ -44,24 +43,25 @@ def show(month=None, year=None, refresh=False):
     if refresh:
         update_local_data(config)
 
-    balance = sum([a.amount for a in load_accounts_from_config(config)])
-    budgets = load_yearly_budgets_from_config(config, date)
+    balance = sum([a.amount for a in storage.load_accounts()])
+    budgets = load_yearly_budgets_from_config(config, date, storage=storage)
+    categories = compute_monthly_categories_from_config(config, date, storage=storage)
+    goals = compute_yearly_savings_goals_from_config(config, date, storage=storage)
     budget = budgets.get_from_date(date)
-    categories = compute_monthly_categories_from_config(config, date)
-    goals = compute_yearly_savings_goals_from_config(config, date)
     
     cur = config.get('currency', '$')
     tx_formatter = lambda tx: tx.to_str(cur)
     category_formatter = lambda c: "%s = %s%s (%s%%)" % (c.name or 'Uncategorized', c.amount, cur, c.pct)
-    goal_formatter = lambda g: "%s = %s%s / %s%s (%s%%) [used: %s (%s%%)]" % (g.label, g.saved, cur, g.target, cur, g.completed_pct, g.used, g.used_pct)
+    goal_formatter = lambda g: "%s: %s%s / %s%s (%s%%) [used=%s%s saved=%s%s remaining=%s%s]" % (
+        g.label, g.completed_amount, cur, g.target, cur, g.completed_pct, g.used, cur, g.saved, cur, g.remaining, cur)
 
     print budget.month.strftime("%B %Y")
     print 
     print u"Income = %s%s (expected = %s%s):" % (budget.income, cur, budget.expected_income, cur)
     print u"\n".join(map(tx_formatter, budget.income_transactions))
     print
-    print u"Recurring expenses = %s%s (expected = %s%s):" % (budget.recurring_expenses, cur, budget.expected_recurring_expenses, cur)
-    print u"\n".join(map(tx_formatter, budget.recurring_expenses_transactions))
+    print u"Planned expenses = %s%s (expected = %s%s):" % (budget.planned_expenses, cur, budget.expected_planned_expenses, cur)
+    print u"\n".join(map(tx_formatter, budget.planned_expenses_transactions))
     print
     print u"Expenses = %s%s:" % (budget.expenses, cur)
     print u"\n".join(map(tx_formatter, budget.expenses_transactions))
@@ -81,7 +81,7 @@ def show(month=None, year=None, refresh=False):
     print u"Yearly savings        = {0}{1}".format(budgets.savings, cur)
     print "-----------------------------------------"
     print u"Income                = {0}{1} ({2:+}{3})".format(budget.expected_income, cur, budget.income - budget.expected_income, cur)
-    print u"Recurring expenses    = {0}{1} ({2}{3})".format(budget.expected_recurring_expenses, cur, budget.recurring_expenses, cur)
+    print u"Planned expenses      = {0}{1} ({2}{3})".format(budget.expected_planned_expenses, cur, budget.planned_expenses, cur)
     print u"Expenses              = {0}{1}".format(budget.expenses, cur)
     if is_current_month:
         print u"Real Balance          = {0:+}{1}".format(budget.expected_real_balance, cur)
@@ -108,38 +108,35 @@ def notify(message):
 
 @command()
 def remap_account_id(prev_id, new_id):
-    data_dir = config.get('data_dir', '.')
-    for filename in os.listdir(data_dir):
-        pathname = os.path.join(data_dir, filename)
-        if not os.path.isfile(pathname):
-            continue
-        with open(pathname) as f:
-            data = json.load(f)
-        if filename == 'accounts.json':
-            for acc in data:
-                if acc['id'] == prev_id:
-                    acc['id'] = new_id
-        else:
-            for tx in data:
-                if tx['account'] == prev_id:
-                    tx['account'] = new_id
-        with open(pathname, 'w') as f:
-            json.dump(data, f, indent=2)
+    def iterator(transactions):
+        if tx.account == prev_id:
+            return tx.update(account=new_id)
+        return tx
+    storage.iter_all_transactions_for_update(iterator)
 
 
 @command()
 def remap_category(old_category, new_category):
-    data_dir = config.get('data_dir', '.')
-    for filename in os.listdir(data_dir):
-        pathname = os.path.join(data_dir, filename)
-        if not os.path.isfile(pathname) or filename == 'accounts.json':
-            continue
-        with open(pathname) as f:
-            data = json.load(f)
-        for tx in data:
-            tx['categories'] = map(lambda c: new_category if c == old_category else c, tx.get('categories') or [])
-        with open(pathname, 'w') as f:
-            json.dump(data, f, indent=2)
+    def iterator(transactions):
+        return tx.update(categories=map(
+            lambda c: new_category if c == old_category else c,
+            tx.categories or []
+        ))
+    storage.iter_all_transactions_for_update(iterator)
+
+
+command()(rematch_categories)
+
+
+@command('', ['new-storage-dir='])
+def migrate_storage(new_storage, new_storage_dir=None):
+    old_storage = get_storage_from_config(config)
+    new_storage = get_storage(new_storage)(dict(config, storage_dir=new_storage_dir or config.get('storage_dir')))
+
+    new_storage.save_accounts(old_storage.load_accounts())
+    for date in old_storage.iter_months():
+        transactions = old_storage.load_monthly_transactions(date)
+        new_storage.save_monthly_transactions(date, transactions)
     
 
 def main(as_module=False):
@@ -164,4 +161,4 @@ def main(as_module=False):
         sys.exit(1)
     func, options, long_options = commands[command]
     kwargs, args = getopt(argv, options, long_options)
-    func(*args, **{k.strip('-'): v if v else True for k, v in kwargs})
+    func(*args, **{k.strip('-').replace('-', '_'): v if v else True for k, v in kwargs})

@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import datetime, json, os, time, unicodecsv, re
 from collections import namedtuple
+from monthdelta import monthdelta
 
 
 class Account(namedtuple('Account', ['id', 'title', 'amount'])):
     @classmethod
     def from_dict(cls, dct):
         return cls(**dct)
+
+    def update(self, **kwargs):
+        return Account(**dict(self._asdict(), **kwargs))
 
     def to_dict(self):
         return {
@@ -22,7 +26,7 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
         return cls(
             id=dct['id'],
             label=dct['label'],
-            date=datetime.date(*map(int, dct['date'].split('-'))),
+            date=datetime.datetime.strptime(dct['date'], "%Y-%m-%d").date(),
             amount=dct['amount'],
             account=dct['account'],
             categories=dct.get('categories') or [],
@@ -43,9 +47,6 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
             'goal': self.goal
         }
 
-    def to_csv(self):
-        return [self.id, self.label, self.date.isoformat(), self.amount, ', '.join(self.categories), self.goal]
-
     def to_str(self, currency=''):
         return u"%s - %s = %s%s%s%s" % (self.date.isoformat(), self.label, self.amount, currency,
             ' #%s' % ', #'.join(self.categories) if self.categories else '',
@@ -55,31 +56,13 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
         return self.to_str()
 
 
-def dump_accounts(accounts, filename):
-    with open(filename, 'w') as f:
-        json.dump(map(lambda acc: acc.to_dict(), accounts), f, indent=2)
-
-
-def load_accounts(filename):
-    with open(filename) as f:
-        return json.load(f, object_hook=lambda dct: Account.from_dict(dct))
-
-
-def dump_transactions(transactions, filename):
-    with open(filename, 'w') as f:
-        json.dump(map(lambda tx: tx.to_dict(), transactions), f, indent=2)
-
-
-def dump_transactions_csv(transactions, filename):
-    with open(filename, 'w') as f:
-        writer = unicodecsv.writer(f)
-        for tx in transactions:
-            writer.writerow(tx.to_csv())
-
-
-def load_transactions(filename):
-    with open(filename) as f:
-        return json.load(f, object_hook=lambda dct: Transaction.from_dict(dct))
+def update_accounts(old_accounts, new_accounts):
+    new_ids = [acc.id for acc in new_accounts]
+    final = list(new_accounts)
+    for acc in old_accounts:
+        if acc.id not in new_ids:
+            final.append(acc)
+    return final
 
 
 def update_transactions(old_transactions, new_transactions):
@@ -88,16 +71,12 @@ def update_transactions(old_transactions, new_transactions):
     for tx in new_transactions:
         if tx.id in old:
             final.append(tx.update(
-                categories=old[tx.id].categories,
+                categories=list(set(old[tx.id].categories or []) | set(tx.categories or [])),
                 goal=old[tx.id].goal
             ))
         else:
             final.append(tx)
     return final
-
-
-def filter_transactions(func, transactions):
-    return filter(func, transactions)
 
 
 def filter_out_transactions(transactions, remove_transactions):
@@ -107,7 +86,7 @@ def filter_out_transactions(transactions, remove_transactions):
 def filter_transactions_period(transactions, start_date=None, end_date=None):
     if not start_date and not end_date:
         return transactions
-    return filter_transactions(
+    return filter(
         lambda tx: (not start_date or tx.date >= start_date) and (not end_date or tx.date < end_date),
         transactions)
 
@@ -145,11 +124,19 @@ def extract_inter_account_transactions(transactions, labels_out, labels_in):
 
 
 def extract_transactions_by_label(transactions, labels):
-    def filter(tx):
+    def match_label(tx):
         for exp in labels:
             if re.match(exp, tx.label):
                 return True
         return False
-    matching = filter_transactions(filter, transactions)
+    matching = filter(match_label, transactions)
     transactions = filter_out_transactions(transactions, matching)
     return matching, transactions
+
+
+def period_to_months(start_date, end_date):
+    dates = [start_date.replace(day=1)]
+    end_date = end_date.replace(day=1) - monthdelta(1)
+    while dates[-1] < end_date:
+        dates.append(dates[-1] + monthdelta(1))
+    return dates

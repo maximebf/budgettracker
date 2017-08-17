@@ -1,19 +1,20 @@
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, abort
 from werkzeug.utils import secure_filename
 from monthdelta import monthdelta
+from tempfile import NamedTemporaryFile
 import datetime, functools, json, unicodecsv, StringIO, os
-from ..budget import IncomeSource, RecurringExpense, SavingsGoal, Category
-from ..utils import CONFIG_FILENAME, load_config, load_adapter
-from ..helpers import (budgetize_from_config, load_yearly_budgets_from_config,
-                       load_monthly_budget_from_config, load_accounts_from_config, update_local_data,
-                       load_monthly_transactions, dump_transactions, get_monthly_transactions_filename,
-                       compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config)
+from ..budget import IncomeSource, PlannedExpense, SavingsGoal
+from ..categories import Category
+from ..helpers import (load_config, save_config, get_storage_from_config, get_bank_adapter_from_config,
+                       load_yearly_budgets_from_config, load_monthly_budget_from_config, update_local_data,
+                       compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config, rematch_categories)
 
 
 app = Flask(__name__)
 config = load_config()
-bank_adapter = load_adapter('bank_adapters', config['bank_adapter'])
-app.config['SECRET_KEY'] = config['web_passcode']
+storage = get_storage_from_config(config)
+bank_adapter = get_bank_adapter_from_config(config)
+app.config['SECRET_KEY'] = config.get('web_passcode', 'budgettracker')
 app.config['CURRENCY'] = config.get('currency', '$')
 app.config.update(config.get('web_config', {}))
 
@@ -21,7 +22,8 @@ app.config.update(config.get('web_config', {}))
 def requires_passcode(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if not session.get('allowed') and (not request.authorization or request.authorization.username != config['web_passcode']):
+        if config.get('web_passcode') and not session.get('allowed') and (
+          not request.authorization or request.authorization.username != config['web_passcode']):
             return redirect(url_for('login'))
         return func(*args, **kwargs)
     return wrapper
@@ -29,8 +31,10 @@ def requires_passcode(func):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if not config.get('web_passcode'):
+        return redirect(url_for('index'))
     if request.method == 'POST':
-        if request.form['code'] == config['web_passcode']:
+        if request.form['code'] == config.get('web_passcode'):
             session['allowed'] = True
             return redirect(url_for('index'))
     return render_template('login.html')
@@ -53,11 +57,11 @@ def index(year=None, month=None):
     else:
         date = current
 
-    accounts = load_accounts_from_config(config)
-    budgets = load_yearly_budgets_from_config(config, date)
-    categories = compute_monthly_categories_from_config(config, date)
+    accounts = storage.load_accounts()
+    budgets = load_yearly_budgets_from_config(config, date, storage=storage)
+    savings_goals = compute_yearly_savings_goals_from_config(config, date, storage=storage)
+    categories = compute_monthly_categories_from_config(config, date, storage=storage)
     category_colors = {c.name: c.color for c in categories}
-    savings_goals = compute_yearly_savings_goals_from_config(config, date)
 
     return render_template('index.html',
         date=date,
@@ -78,7 +82,7 @@ def index(year=None, month=None):
 @requires_passcode
 def budget(year, month):
     date = datetime.date(year, month, 1)
-    budget = load_monthly_budget_from_config(config, date)
+    budget = load_monthly_budget_from_config(config, date, storage=storage)
     return jsonify(**budget.to_dict(with_transactions=False))
 
 
@@ -86,7 +90,7 @@ def budget(year, month):
 @requires_passcode
 def transactions(year, month):
     date = datetime.date(year, month, 1)
-    budget = load_monthly_budget_from_config(config, date)
+    budget = load_monthly_budget_from_config(config, date, storage=storage)
     return jsonify(map(lambda tx: tx.to_dict(), budget.transactions))
 
 
@@ -94,7 +98,7 @@ def transactions(year, month):
 @requires_passcode
 def transactions_csv(year, month):
     date = datetime.date(year, month, 1)
-    budget = load_monthly_budget_from_config(config, date)
+    budget = load_monthly_budget_from_config(config, date, storage=storage)
     out = StringIO.StringIO()
     writer = unicodecsv.writer(out)
     for tx in budget.transactions:
@@ -108,35 +112,36 @@ def update_transaction(year, month, transaction_id):
     date = datetime.date(year, month, 1)
     categories = request.form.getlist('categories')
     goal = request.form.get('goal')
-    transactions = load_monthly_transactions(date, directory=config.get('data_dir'))
-    final = []
-    new_tx = None
-    for tx in transactions:
-        if tx.id == transaction_id:
-            new_tx = tx.update(categories=categories, goal=goal)
-            final.append(new_tx)
-        else:
-            final.append(tx)
-    if not new_tx:
-        abort(404)
-    dump_transactions(final, get_monthly_transactions_filename(date, config.get('data_dir')))
-    return jsonify(**new_tx.to_dict())
+    storage.update_transaction(date, transaction_id,
+        categories=categories, goal=goal)
+    return ''
 
 
-@app.route('/update', methods=['POST'])
+@app.route('/<int:year>-<int:month>', methods=['POST'])
 @requires_passcode
-def update():
+def update(year, month):
+    date = datetime.date(year, month, 1)
     filename = None
-    if bank_adapter.ADAPTER_TYPE == 'file':
+    delete_file = False
+    if bank_adapter.fetch_type == 'file':
         if 'file' not in request.files:
             abort(400)
         file = request.files['file']
-        filename = os.path.join(config.get('imports_dir', '.'), secure_filename(file.filename))
-        if not os.path.exists(os.path.dirname(filename)):
-            os.makedirs(os.path.dirname(filename))
+        if config.get('imports_dir'):
+            filename = os.path.join(config.get['imports_dir'],
+                '%s-%s' % (datetime.date.today().isoformat(), secure_filename(file.filename)))
+            if not os.path.exists(os.path.dirname(filename)):
+                os.makedirs(os.path.dirname(filename))
+        else:
+            temp_file = NamedTemporaryFile(delete=False)
+            filename = temp_file.name
+            temp_file.close()
+            delete_file = True
         file.save(filename)
-    update_local_data(config, filename=filename)
-    return redirect(url_for('index'))
+    update_local_data(config, date=date, filename=filename, storage=storage)
+    if delete_file:
+        os.unlink(filename)
+    return redirect(url_for('index', year=year, month=month))
 
 
 @app.route('/config', methods=['GET', 'POST'])
@@ -146,47 +151,46 @@ def edit_config():
     if request.method == 'POST':
         date_cast = lambda d: datetime.datetime.strptime(d, '%Y-%m-%d').date() if d else ''
         color_cast = lambda c: '#%s' % c if not c.startswith('#') else c
+        keywords_cast = lambda k: filter(bool, map(unicode.strip, k.split(',')))
         income_sources = map(lambda a: IncomeSource(*a), zip(
             request.form.getlist('income_sources_label'),
             request.form.getlist('income_sources_amount', float),
             request.form.getlist('income_sources_match'),
             request.form.getlist('income_sources_from_date', date_cast),
             request.form.getlist('income_sources_to_date', date_cast)))
-        recurring_expenses = map(lambda a: RecurringExpense(*a), zip(
-            request.form.getlist('recurring_expenses_label'),
-            request.form.getlist('recurring_expenses_amount', float),
-            request.form.getlist('recurring_expenses_recurrence'),
-            request.form.getlist('recurring_expenses_match'),
-            request.form.getlist('recurring_expenses_from_date', date_cast),
-            request.form.getlist('recurring_expenses_to_date', date_cast)))
+        planned_expenses = map(lambda a: PlannedExpense(*a), zip(
+            request.form.getlist('planned_expenses_label'),
+            request.form.getlist('planned_expenses_amount', float),
+            request.form.getlist('planned_expenses_recurrence'),
+            request.form.getlist('planned_expenses_match'),
+            request.form.getlist('planned_expenses_from_date', date_cast),
+            request.form.getlist('planned_expenses_to_date', date_cast)))
         savings_goals = map(lambda a: SavingsGoal(*a), zip(
             request.form.getlist('savings_goals_label'),
             request.form.getlist('savings_goals_amount', float)))
         categories = map(lambda a: Category(*a), zip(
             request.form.getlist('categories_name'),
-            request.form.getlist('categories_color', color_cast)))
-
-        app.logger.debug(recurring_expenses)
-        app.logger.debug(map(lambda e: e.to_dict(), recurring_expenses))
+            request.form.getlist('categories_color', color_cast),
+            request.form.getlist('categories_keywords', keywords_cast)))
 
         config.update(
           income_sources=map(lambda s: s.to_dict(), income_sources),
-          recurring_expenses=map(lambda e: e.to_dict(), recurring_expenses),
+          planned_expenses=map(lambda e: e.to_dict(), planned_expenses),
           savings_goals=map(lambda g: g.to_dict(), savings_goals),
           categories=map(lambda c: c.to_dict(), categories))
 
-        app.logger.debug(config)
-
         try:
-            with open(CONFIG_FILENAME, 'w') as f:
-                json.dump(config, f, indent=2, sort_keys=2)
+            save_config(config)
+            rematch_categories(config, storage)
             return redirect(url_for('index'))
-        except:
-            pass
+        except Exception as e:
+            raise
+            app.logger.error(e)
+
 
     return render_template('config.html',
         config=config,
         income_sources=map(IncomeSource.from_dict, config.get('income_sources', [])),
-        recurring_expenses=map(RecurringExpense.from_dict, config.get('recurring_expenses', [])),
+        planned_expenses=map(PlannedExpense.from_dict, config.get('planned_expenses', [])),
         savings_goals=map(SavingsGoal.from_dict, config.get('savings_goals', [])),
         categories=map(Category.from_dict, config.get('categories', [])))

@@ -44,8 +44,8 @@
       <button type="button" onclick="addTemplateRow('income_sources')">&oplus; Add</button>
     </fieldset>
     <fieldset>
-      <legend>Recurring Expenses</legend>
-      <table id="recurring_expenses">
+      <legend>Planned Expenses</legend>
+      <table id="planned_expenses">
         <thead>
           <tr>
             <th>Label</th>
@@ -58,43 +58,43 @@
           </tr>
         </thead>
         <tbody>
-          {% for exp in recurring_expenses %}
+          {% for exp in planned_expenses %}
           <tr>
-            <td><input type="text" value="{{exp.label}}" name="recurring_expenses_label" required></td>
-            <td><input type="number" value="{{exp.amount}}" name="recurring_expenses_amount" required></td>
+            <td><input type="text" value="{{exp.label}}" name="planned_expenses_label" required></td>
+            <td><input type="number" value="{{exp.amount}}" name="planned_expenses_amount" required></td>
             <td>
-              <select name="recurring_expenses_recurrence">
+              <select name="planned_expenses_recurrence">
                 {% for recur in ('Weekly', 'Monthly', 'Yearly') %}
                 <option value="{{recur|upper}}" {% if recur|upper == exp.recurrence_label %}selected{% endif %}>{{recur}}</option>
                 {% endfor %}
               </select>
             </td>
-            <td><input type="text" value="{{exp.match or ''}}" name="recurring_expenses_match"></td>
-            <td><input type="date" value="{{exp.from_date.isoformat() if exp.from_date else ''}}" name="recurring_expenses_from_date"></td>
-            <td><input type="date" value="{{exp.to_date.isoformat() if exp.to_date else ''}}" name="recurring_expenses_to_date"></td>
+            <td><input type="text" value="{{exp.match or ''}}" name="planned_expenses_match"></td>
+            <td><input type="date" value="{{exp.from_date.isoformat() if exp.from_date else ''}}" name="planned_expenses_from_date"></td>
+            <td><input type="date" value="{{exp.to_date.isoformat() if exp.to_date else ''}}" name="planned_expenses_to_date"></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      <template id="recurring_expenses_row">
+      <template id="planned_expenses_row">
         <tr>
-          <td><input type="text" value="" name="recurring_expenses_label" required></td>
-          <td><input type="number" value="" name="recurring_expenses_amount" required></td>
+          <td><input type="text" value="" name="planned_expenses_label" required></td>
+          <td><input type="number" value="" name="planned_expenses_amount" required></td>
           <td>
-            <select name="recurring_expenses_recurrence">
+            <select name="planned_expenses_recurrence">
               {% for recur in ('Weekly', 'Monthly', 'Yearly') %}
               <option value="{{recur|upper}}">{{recur}}</option>
               {% endfor %}
             </select>
           </td>
-          <td><input type="text" value="" name="recurring_expenses_match"></td>
-          <td><input type="date" value="" name="recurring_expenses_from_date"></td>
-          <td><input type="date" value="" name="recurring_expenses_to_date"></td>
+          <td><input type="text" value="" name="planned_expenses_match"></td>
+          <td><input type="date" value="" name="planned_expenses_from_date"></td>
+          <td><input type="date" value="" name="planned_expenses_to_date"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
-      <button type="button" onclick="addTemplateRow('recurring_expenses')">&oplus; Add</button>
+      <button type="button" onclick="addTemplateRow('planned_expenses')">&oplus; Add</button>
     </fieldset>
     <fieldset>
       <legend>Savings Goals (per year)</legend>
@@ -130,8 +130,9 @@
       <table id="categories">
         <thead>
           <tr>
-            <th>Name</th>
+            <th width="150">Name</th>
             <th width="100">Color</th>
+            <th>Keywords</th>
             <th></th>
           </tr>
         </thead>
@@ -140,6 +141,7 @@
           <tr>
             <td><input type="text" value="{{category.name}}" name="categories_name" required></td>
             <td><input type="text" class="jscolor" value="{{category.color}}" name="categories_color"></td>
+            <td><input type="text" value="{{", ".join(category.keywords)}}" name="categories_keywords"></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
@@ -149,6 +151,7 @@
         <tr>
           <td><input type="text" value="" name="categories_name" required></td>
           <td><input type="text" class="jscolor" value="" name="categories_color"></td>
+          <td><input type="text" value="" name="categories_keywords"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
@@ -158,10 +161,12 @@
   </form>
   <script>
     function addTemplateRow(tableId) {
-      var t = document.querySelector('#' + tableId + '_row');
-      var tb = document.querySelector('#' + tableId + ' tbody');
-      var clone = document.importNode(t.content, true);
-      tb.appendChild(clone);
+      var tpl = document.querySelector('#' + tableId + '_row');
+      var table = document.querySelector('#' + tableId + ' tbody');
+      table.appendChild(document.importNode(tpl.content, true));
+      table.querySelectorAll('input.jscolor').forEach(function(node) {
+        new jscolor(node);
+      });
     }
 
     function removeRow(event) {

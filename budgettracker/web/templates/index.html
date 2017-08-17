@@ -7,8 +7,11 @@
     }
 
     function showAllTransactions() {
-      document.querySelector('.transactions.hidden').classList.remove('hidden');
-      document.querySelector('#show-more').remove();
+      var showMore = document.querySelector('#show-more');
+      if (showMore) {
+        showMore.remove();
+        document.querySelector('.transactions.hidden').classList.remove('hidden');
+      }
     }
 
     function uploadFile() {
@@ -21,35 +24,44 @@
       }
     }
 
-    var selectedTransaction;
+    function transactionNodeToObject(node) {
+      var obj = {
+        id: node.dataset.txId,
+        date: new Date(node.dataset.txDate),
+        label: node.querySelector('.label').innerText,
+        amount: node.dataset.txAmount,
+        amount_text: node.querySelector('.amount').innerText,
+        categories: [],
+        goal: null
+      };
+      node.querySelectorAll('.category').forEach(function(node) {
+        if (node.innerText) {
+          obj.categories.push(node.innerText);
+        }
+      });
+      var goalNode = node.querySelector('.goal');
+      if (goalNode) {
+        obj.goal = goalNode.getAttribute('title');
+      }
+      return obj;
+    }
+
+    var selectedTransactionNode;
 
     function showTransactionOptions(event) {
       event.stopPropagation();
       event.preventDefault();
       var form = document.querySelector('#transaction-options form');
 
-      selectedTransaction = event.target.parentNode;
-      form.action = form.dataset.actionBase + '/' + selectedTransaction.dataset.txId;
-      form.querySelector('h4').innerText = selectedTransaction.querySelector('.label').innerText
-        + '(' + selectedTransaction.querySelector('.amount').innerText + ')';
-
-      var categories = [];
-      selectedTransaction.querySelectorAll('.category').forEach(function(node) {
-        if (node.innerText) {
-          categories.push(node.innerText);
-        }
-      });
+      selectedTransactionNode = event.target.parentNode
+      var tx = transactionNodeToObject(selectedTransactionNode);
+      form.action = form.dataset.actionBase + '/' + tx.id;
+      form.querySelector('h4').innerText = tx.label + ' (' + tx.amount_text + ')';
       form.querySelectorAll('input[name="categories"]').forEach(function(node) {
-        node.checked = categories.indexOf(node.value) !== -1;
+        node.checked = tx.categories.indexOf(node.value) !== -1;
       });
-
-      var goalNode = selectedTransaction.querySelector('.goal');
       form.querySelectorAll('input[name="goal"]').forEach(function(node) {
-        if (!goalNode) {
-          node.checked = node.value == '';
-        } else {
-          node.checked = node.value == goalNode.getAttribute('title');
-        }
+        node.checked = (!tx.goal && node.value === '') || (tx.goal && node.value === tx.goal);
       });
 
       document.querySelector('#transaction-options').classList.add('visible');
@@ -63,14 +75,14 @@
       var req = new XMLHttpRequest();
       req.responseType = 'json';
       req.addEventListener("load", function() {
-        selectedTransaction.querySelectorAll('.category').forEach(function(node) {
+        selectedTransactionNode.querySelectorAll('.category').forEach(function(node) {
           node.parentNode.removeChild(node);
         });
-        var goalNode = selectedTransaction.querySelector('.goal');
+        var goalNode = selectedTransactionNode.querySelector('.goal');
         if (goalNode) {
           goalNode.parentNode.removeChild(goalNode);
         }
-        var before = selectedTransaction.querySelector('.amount');
+        var before = selectedTransactionNode.querySelector('.amount');
         form.querySelectorAll('input[name="goal"]').forEach(function(node) {
           if (node.checked && node.value) {
             var span = document.createElement('span');
@@ -78,7 +90,7 @@
             span.innerHTML = '&#9733;';
             span.classList.add('goal');
             span.onclick = showTransactionOptions;
-            selectedTransaction.insertBefore(span, before);
+            selectedTransactionNode.insertBefore(span, before);
           }
         });
         var hasCategory = false;
@@ -90,7 +102,7 @@
             span.classList.add('category');
             span.onclick = showTransactionOptions;
             span.setAttribute("style", node.parentNode.getAttribute("style"));
-            selectedTransaction.insertBefore(span, before);
+            selectedTransactionNode.insertBefore(span, before);
             hasCategory = true;
           }
         });
@@ -98,7 +110,7 @@
           var span = document.createElement('span');
           span.classList.add('category');
           span.onclick = showTransactionOptions;
-          selectedTransaction.insertBefore(span, before);
+          selectedTransactionNode.insertBefore(span, before);
         }
         hideTransactionOptions();
       });
@@ -109,8 +121,29 @@
     function hideTransactionOptions() {
       document.querySelector('#transaction-options').classList.remove('visible');
     }
+
+    function filterTransactions(category) {
+      showAllTransactions();
+      document.querySelectorAll('ul.transactions li').forEach(function(node) {
+        var tx = transactionNodeToObject(node);
+        if ((category && tx.categories.indexOf(category) === -1) || (!category && tx.categories.length)) {
+          node.classList.add('hide');
+        } else {
+          node.classList.remove('hide');
+        }
+      });
+      document.querySelector('#clear-filter').style.display = 'block';
+    }
+
+    function clearTransactionsFilter() {
+      document.querySelectorAll('ul.transactions li').forEach(function(node) {
+        node.classList.remove('hide');
+      });
+      document.querySelector('#clear-filter').style.display = 'none';
+    }
   </script>
 {% endblock %}
+
 {% block page_header %}
   <div id="accounts" onclick="toggleAccounts()">
     <div class="balance">{{account_balance or 0}}{{config['CURRENCY']}}</div>
@@ -125,22 +158,35 @@
       </tr>
       {% endfor %}
     </table>
+    {% if savings_goals %}
     <table>
       <tr>
-        <th>Savings goals</th>
-        <th width="80">Used</th>
-        <th width="80">Saved</th>
-        <th width="80">Target</th>
+        <th colspan="2">Savings goals</th>
       </tr>
       {% for goal in savings_goals %}
       <tr>
-        <td>{{goal.label}}</td>
-        <td>{{goal.used}}{{config['CURRENCY']}}</td>
-        <td>{{goal.saved}}{{config['CURRENCY']}}</td>
-        <td>{{goal.target}}{{config['CURRENCY']}}</td>
+        <td>{{goal.label}} ({{goal.target}}{{config['CURRENCY']}})</td>
+        <td width="150">
+          <div class="goal-bar {{'success' if not goal.remaining else ''}}">
+            {% if goal.used %}
+            <span class="used" title="Used ({{goal.used}}{{config['CURRENCY']}}) ({{goal.used_pct}}%)"
+              style="flex-basis: {{goal.used_pct}}%"></span>
+            {% endif %}
+            {% if goal.remaining %}
+            {% if goal.saved %}
+            <span class="saved" title="Saved ({{goal.saved}}{{config['CURRENCY']}}) ({{goal.saved_pct}}%)"
+              style="flex-basis: {{goal.saved_pct}}%"></span>
+            {% endif %}
+            <span class="remaining" title="Remaining ({{goal.remaining}}{{config['CURRENCY']}}) ({{goal.remaining_pct}}%)"></span>
+            {% else %}
+            <span class="saved" title="Saved ({{goal.saved}}{{config['CURRENCY']}}) ({{goal.saved_pct}}%)"></span>
+            {% endif %}
+          </div>
+        </td>
       </tr>
       {% endfor %}
     </table>
+    {% endif %}
     <div class="yearly-savings">
       Savings this year: {{budgets.savings}}{{config['CURRENCY']}} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}})
     </div>
@@ -148,17 +194,17 @@
   <div id="header">
     <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
     <h1 id="month">{{date.strftime('%B %Y')}}</h1>
-    {% if not next_date %}
-      <form action="{{url_for('update')}}" method="POST" enctype="multipart/form-data" id="update-form">
-        {% if bank_adapter.ADAPTER_TYPE == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
-        <button type="{{ 'submit' if bank_adapter.ADAPTER_TYPE == 'web' else 'button' }}" title="Update data ({{bank_adapter.__name__}})"
-          {% if bank_adapter.ADAPTER_TYPE == 'file' %}onclick="uploadFile()"{% endif %}>&#8635;</button>
-      </form>
-    {% else %}
+    <form action="{{url_for('update', year=date.year, month=date.month)}}" method="POST" enctype="multipart/form-data" id="update-form">
+      {% if bank_adapter.fetch_type == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
+      <button type="{{ 'submit' if bank_adapter.fetch_type == 'web' else 'button' }}" title="Update data ({{bank_adapter.name}})"
+        {% if bank_adapter.fetch_type == 'file' %}onclick="uploadFile()"{% endif %}>&#8635;</button>
+    </form>
+    {% if next_date %}
       <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
     {% endif %}
   </div>
 {% endblock %}
+
 {% block page %}
   {% if budget %}
     {% include "_budget.html" %}
@@ -168,7 +214,9 @@
         {% for category in categories %}
           {% if category.amount > 0 %}
           <span title="{{category.name or 'Uncategorized'}} ({{category.amount}}{{config['CURRENCY']}}) ({{category.pct}}%)"
-            style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"></span>
+            style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"
+            data-name="{{category.name or 'Uncategorized'}}" data-amount="{{category.amount}}"
+            onclick="filterTransactions({{ ("'" + category.name + "'") if category.name else ''}})"></span>
           {% endif %}
         {% endfor %}
       </div>
@@ -176,11 +224,13 @@
       <hr>
     {% endif %}
     {% include "_transactions.html" %}
+    <a id="clear-filter" href="javascript:" onclick="clearTransactionsFilter()">Clear filter</a>
     {% endif %}
   {% else %}
     <p id="nodata">No data for this month</p>
   {% endif %}
 {% endblock %}
+
 {% block footer %}
   <div id="footer">
     <a href="{{url_for('budget', year=date.year, month=date.month)}}">budget.json</a> -

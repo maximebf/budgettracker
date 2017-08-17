@@ -1,165 +1,164 @@
-import requests, time, os, datetime
-from .data import (dump_transactions, load_transactions, extract_inter_account_transactions,
-                   dump_accounts, load_accounts as _load_accounts, filter_transactions_period,
-                   update_transactions)
-from .budget import (budgetize, IncomeSource, RecurringExpense, SavingsGoal, period_to_months,
-                     compute_savings_goals, compute_categories, Category)
-from .bank_adapters import *
+import time, os, datetime, json, codecs
+from .data import (extract_inter_account_transactions, filter_transactions_period, update_transactions,
+                   update_accounts as _update_accounts, period_to_months)
+from .budget import budgetize, IncomeSource, PlannedExpense, SavingsGoal, compute_savings_goals
+from .categories import compute_categories, Category, match_categories
+from .bank_adapters import get_bank_adapter
+from .storage import get_storage
 from monthdelta import monthdelta
+from importlib import import_module
 
 
-def get_accounts_filename(directory=None, filename=None):
-    if not filename:
-        filename = 'accounts.json'
-    if directory:
-        filename = os.path.join(directory, filename)
-    return filename
+ROOT_DIR = os.environ.get('BUDGET_DIR', '.')
+CONFIG_FILENAME = os.environ.get('BUDGET_CONFIG', os.path.join(ROOT_DIR, 'config.json'))
 
 
-def save_accounts(adapter, session, directory=None, filename=None):
-    accounts = adapter.fetch_accounts(session)
-    dump_accounts(accounts, get_accounts_filename(directory, filename))
-    return accounts
+def get_bank_adapter_from_config(config, filename=None):
+    return get_bank_adapter(config.get('bank_adapter', 'ofx'))(config, filename)
 
 
-def load_accounts(adapter=None, session=None, directory=None, filename=None, refresh=False):
-    if refresh and adapter and session:
-        return save_accounts(adapter, session, directory=directory, filename=filename)
-    return _load_accounts(get_accounts_filename(directory, filename))
+def get_storage_from_config(config):
+    return get_storage(config.get('storage', 'csv'))(config)
 
 
-def load_accounts_from_config(config, *args, **kwargs):
-    kwargs['directory'] = config.get('data_dir')
-    return load_accounts(*args, **kwargs)
-
-
-def get_monthly_transactions_filename(date, directory=None, filename=None):
-    if not filename:
-        filename = date.replace(day=1).strftime("%Y-%m.json")
-    if directory:
-        filename = os.path.join(directory, filename)
-    return filename
-
-
-def save_monthly_transactions(date, adapter, session, filename=None, directory=None, reset=False):
-    filename = get_monthly_transactions_filename(date, directory, filename)
-    if not os.path.exists(os.path.dirname(filename)):
-        os.makedirs(os.path.dirname(filename))
-    start_date = date.replace(day=1)
-    end_date = start_date + monthdelta(1)
-    transactions = adapter.fetch_transactions_from_all_accounts(session, start_date, end_date)
-    if not reset:
-        old_transactions = load_monthly_transactions(date, filename=filename)
-        transactions = update_transactions(old_transactions, transactions)
-    dump_transactions(transactions, filename)
-    return transactions
-
-
-def load_monthly_transactions(date, refresh=False, adapter=None, session=None, filename=None, directory=None, reset=False):
-    filename = get_monthly_transactions_filename(date, directory, filename)
-    start_date = date.replace(day=1)
-    end_date = start_date + monthdelta(1)
-    if refresh and adapter and session:
-        return save_monthly_transactions(date, adapter, session, filename, reset=reset)
+def load_config(filename=CONFIG_FILENAME):
+    config = {}
     if os.path.exists(filename):
-        return load_transactions(filename)
-    return []
+        with open(filename) as f:
+            config = json.load(f)
+    config = {k.lower(): v for k, v in config.items()}
+    for k, v in os.environ.items():
+        if k.startswith('BUDGET_') and k != 'BUDGET_CONFIG':
+            config[k[7:].lower()] = v
+    return config
 
 
-def load_period_transactions(start_date, end_date, directory=None):
-    transactions = []
-    for date in period_to_months(start_date, end_date):
-        transactions.extend(load_monthly_transactions(date, directory=directory))
-    return filter_transactions_period(transactions, start_date, end_date)
+def save_config(config, filename=CONFIG_FILENAME):
+    with codecs.open(filename, 'w') as f:
+        json.dump(config, f, indent=2, sort_keys=2)
 
 
-def load_yearly_transactions(date, directory=None):
-    start_date = date.replace(day=1, month=1)
-    end_date = start_date.replace(year=start_date.year+1)
-    return load_period_transactions(start_date, end_date, directory=directory)
-
-
-def compute_yearly_savings_goals_from_config(config, date):
-    return compute_savings_goals(
-        load_yearly_budgets_from_config(config, date, False),
-        map(SavingsGoal.from_dict, config.get('savings_goals', []))
-    )
-
-
-def budgetize_from_config(transactions, start_date, end_date, config, compute_savings_goals=True):
-    if 'inter_account_labels_out' in config and 'inter_account_labels_in' in config:
+def budgetize_from_config(config, transactions, start_date, end_date, compute_savings_goals=True, storage=None):
+    if config.get('inter_account_labels_out') and config.get('inter_account_labels_in'):
         _, transactions = extract_inter_account_transactions(transactions,
                 config['inter_account_labels_out'], config['inter_account_labels_in'])
 
     income_sources = map(IncomeSource.from_dict, config.get('income_sources', []))
+    planned_expenses = map(PlannedExpense.from_dict, config.get('planned_expenses', []))
     income_delay = config.get('income_delay', 0)
-    recurring_expenses = map(RecurringExpense.from_dict, config.get('recurring_expenses', []))
+
     if compute_savings_goals:
-        savings_goals = compute_yearly_savings_goals_from_config(config, start_date)
+        savings_goals = compute_yearly_savings_goals_from_config(config, start_date, storage)
     else:
         savings_goals = map(SavingsGoal.from_dict, config.get('savings_goals', []))
 
-    return budgetize(transactions, start_date, end_date, income_sources, recurring_expenses,
-        savings_goals, income_delay)
+    return budgetize(transactions, start_date, end_date, income_sources,
+        planned_expenses, savings_goals, income_delay)
 
 
-def load_monthly_budget_from_config(config, date, refresh=False, adapter=None, session=None, filename=None, reset=False):
-    if refresh and not adapter and not session:
-        adapter, session = create_adapter_and_session_from_config(config, filename)
-
+def load_monthly_budget_from_config(config, date, storage=None):
+    if not storage:
+        storage = get_storage_from_config(config)
     start_date = date.replace(day=1)
     end_date = start_date + monthdelta(1)
-    transactions = load_monthly_transactions(start_date, refresh=refresh, adapter=adapter,
-        session=session, directory=config.get('data_dir'), reset=reset)
-
+    transactions = storage.load_monthly_transactions(start_date)
     if config.get('income_delay'):
-        transactions.extend(load_monthly_transactions(end_date, directory=config.get('data_dir')))
+        transactions.extend(storage.load_monthly_transactions(end_date))
+    return budgetize_from_config(config, transactions, start_date, end_date)[0]
 
-    return budgetize_from_config(transactions, start_date, end_date, config)[0]
 
-
-def load_yearly_budgets_from_config(config, date, compute_savings_goals=True):
+def load_yearly_budgets_from_config(config, date, compute_savings_goals=True, storage=None):
+    if not storage:
+        storage = get_storage_from_config(config)
     start_date = date.replace(day=1, month=1)
     end_date = start_date.replace(year=start_date.year+1)
     if start_date.year <= datetime.date.today().year:
         end_date = min(datetime.date.today().replace(day=1) + monthdelta(1), end_date)
-    transactions = load_yearly_transactions(date, directory=config.get('data_dir'))
 
+    transactions = storage.load_yearly_transactions(date)
     if config.get('income_delay'):
-        transactions.extend(load_monthly_transactions(end_date, directory=config.get('data_dir')))
+        transactions.extend(storage.load_monthly_transactions(end_date))
 
-    return budgetize_from_config(transactions, start_date, end_date, config, compute_savings_goals)
+    return budgetize_from_config(config, transactions, start_date, end_date, compute_savings_goals)
 
 
-def compute_monthly_categories_from_config(config, date):
+def compute_yearly_savings_goals_from_config(config, date, storage=None):
+    return compute_savings_goals(
+        load_yearly_budgets_from_config(config, date, False, storage),
+        map(SavingsGoal.from_dict, config.get('savings_goals', []))
+    )
+
+
+def compute_monthly_categories_from_config(config, date, storage=None):
+    if not storage:
+        storage = get_storage_from_config(config)
     categories = map(Category.from_dict, config.get('categories', []))
-    transactions = load_monthly_transactions(date, directory=config.get('data_dir'))
+    transactions = storage.load_monthly_transactions(date)
     return compute_categories(transactions, categories)
 
 
-def notify_using_config(config, message):
-    print message
-    if config.get('notify_adapter'):
-        adapter = load_adapter('notify_adapters', config['notify_adapter'])
-        adapter.send(config, message)
+def update_monthly_transactions(storage, adapter, date, reset=False):
+    start_date = date.replace(day=1)
+    end_date = start_date + monthdelta(1)
+
+    transactions = adapter.fetch_transactions_from_all_accounts(start_date, end_date)
+    if not reset:
+        old_transactions = storage.load_monthly_transactions(date)
+        transactions = update_transactions(old_transactions, transactions)
+
+    storage.save_monthly_transactions(date, transactions)
+    return transactions
 
 
-def update_local_data(config, notify=True, date=None, adapter=None, session=None, filename=None, reset=False):
+def update_accounts(storage, adapter, reset=False):
+    accounts = list(adapter.fetch_accounts())
+    if not reset:
+        old_accounts = storage.load_accounts()
+        accounts = _update_accounts(old_accounts, accounts)
+    storage.save_accounts(accounts)
+    return accounts
+
+
+def update_local_data(config, notify=True, date=None, storage=None, adapter=None, filename=None, reset=False):
     if not adapter:
-        adapter, session = create_adapter_and_session_from_config(config, filename)
+        adapter = get_bank_adapter_from_config(config, filename)
+    if not storage:
+        storage = get_storage_from_config(config)
 
     if not date:
         if datetime.date.today().day <= 5:
             # if we are still in the early days of a new month, keep updating the previous month
             update_local_data(config, False, datetime.date.today() - monthdelta(1), adapter, session)
         date = datetime.date.today().replace(day=1)
+    elif date < datetime.date.today().replace(day=1):
+        notify = False
 
-    prev_budget = load_monthly_budget_from_config(config, date)
-    budget = load_monthly_budget_from_config(config, date, refresh=True, adapter=adapter, session=session, reset=reset)
-    save_accounts(adapter, session, directory=config.get('data_dir'))
+    prev_budget = load_monthly_budget_from_config(config, date, storage)
+
+    update_monthly_transactions(storage, adapter, date, reset)
+    update_accounts(storage, adapter, reset)
+
+    budget = load_monthly_budget_from_config(config, date, storage)
 
     if notify:
         if config.get('notify_remaining') and prev_budget.expected_remaining > config['notify_remaining'] and budget.expected_remaining <= config['notify_remaining']:
             notify_using_config(config, 'BUDGET: /!\ LOW SAFE TO SPEND: %se' % budget.expected_remaining)
         elif config.get('notify_delta') and (prev_budget.expected_remaining - budget.expected_remaining) > config['notify_delta']:
             notify_using_config(config, 'BUDGET: Remaining funds: %se' % budget.expected_remaining)
+
+
+def rematch_categories(config, storage=None):
+    if not storage:
+        storage = get_storage_from_config(config)
+    categories = map(Category.from_dict, config.get('categories', []))
+    def iterator(tx):
+        return tx.update(
+            categories=list(set(tx.categories or []) | set(match_categories(categories, tx.label))))
+    storage.iter_all_transactions_for_update(iterator)
+
+
+def notify_using_config(config, message):
+    print message
+    if config.get('notify_adapter'):
+        adapter = import_module('budgettracker.notify_adapters.' + config['notify_adapter'])
+        adapter.send(config, message)

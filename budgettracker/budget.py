@@ -1,13 +1,14 @@
 from collections import namedtuple, OrderedDict
-from .data import split_income_expenses, extract_transactions_by_label, filter_transactions_period, sort_transactions
+from .data import (split_income_expenses, extract_transactions_by_label, filter_transactions_period,
+                   sort_transactions, period_to_months)
 import datetime
 from monthdelta import monthdelta
 
 
-class Budget(namedtuple('Budget', ['month', 'transactions', 'income_transactions', 'recurring_expenses_transactions',
-    'expenses_transactions', 'real_balance', 'balance', 'income', 'recurring_expenses', 'expenses',
+class Budget(namedtuple('Budget', ['month', 'transactions', 'income_transactions', 'planned_expenses_transactions',
+    'expenses_transactions', 'real_balance', 'balance', 'income', 'planned_expenses', 'expenses',
     'savings',  'savings_goal', 'expected_real_balance', 'expected_balance', 'expected_income',
-    'expected_recurring_expenses', 'expected_savings', 'expected_remaining'])):
+    'expected_planned_expenses', 'expected_savings', 'expected_remaining'])):
 
     def to_dict(self, with_transactions=True):
         dct = {
@@ -15,14 +16,14 @@ class Budget(namedtuple('Budget', ['month', 'transactions', 'income_transactions
             "real_balance": self.real_balance,
             "balance": self.balance,
             "income": self.income,
-            "recurring_expenses": self.recurring_expenses,
+            "planned_expenses": self.planned_expenses,
             "expenses": self.expenses,
             "savings": self.savings,
             "savings_goal": self.savings_goal,
             "expected_real_balance": self.expected_real_balance,
             "expected_balance": self.expected_balance,
             "expected_income": self.expected_income,
-            "expected_recurring_expenses": self.expected_recurring_expenses,
+            "expected_planned_expenses": self.expected_planned_expenses,
             "expected_savings": self.expected_savings,
             "expected_remaining": self.expected_remaining
         }
@@ -30,7 +31,7 @@ class Budget(namedtuple('Budget', ['month', 'transactions', 'income_transactions
             dct.update({
                 "transactions": self.transactions,
                 "income_transactions": self.income_transactions,
-                "recurring_expenses_transactions": self.recurring_expenses_transactions,
+                "planned_expenses_transactions": self.planned_expenses_transactions,
                 "expenses_transactions": self.expenses_transactions
             })
         return dct
@@ -62,8 +63,8 @@ class BudgetList(list):
         return self._aggregate_transactions('income_transactions')
 
     @property
-    def recurring_expenses_transactions(self):
-        return self._aggregate_transactions('recurring_expenses_transactions')
+    def planned_expenses_transactions(self):
+        return self._aggregate_transactions('planned_expenses_transactions')
 
     @property
     def expenses_transactions(self):
@@ -82,8 +83,8 @@ class BudgetList(list):
         return self._sum('income')
     
     @property
-    def recurring_expenses(self):
-        return self._sum('recurring_expenses')
+    def planned_expenses(self):
+        return self._sum('planned_expenses')
     
     @property
     def expenses(self):
@@ -126,7 +127,7 @@ class IncomeSource(namedtuple('IncomeSource', ['label', 'amount', 'match', 'from
         }
 
 
-class RecurringExpense(namedtuple('RecurringExpense', ['label', 'amount', 'recurrence', 'match', 'from_date', 'to_date'])):
+class PlannedExpense(namedtuple('PlannedExpense', ['label', 'amount', 'recurrence', 'match', 'from_date', 'to_date'])):
     WEEKLY = 0.25
     MONTHLY = 1
     YEARLY = 12
@@ -186,115 +187,123 @@ class ComputedSavingsGoal(namedtuple('ComputedSavingsGoal', ['label', 'target', 
         return cls(label=goal.label, target=goal.amount, **kwargs)
 
     @property
-    def remaining(self):
-        return max(self.target - self.saved, 0)
-
-    @property
-    def completed(self):
-        return self.remaining == 0
+    def completed_amount(self):
+        return min(self.saved + self.used, self.target)
 
     @property
     def completed_pct(self):
-        return round(self.saved * 100 / self.target, 0)
+        return round(self.completed_amount * 100 / self.target, 0)
+
+    @property
+    def remaining(self):
+        return max(self.target - self.completed_amount, 0)
+
+    @property
+    def remaining_pct(self):
+        return round(self.remaining * 100 / self.target, 0)
 
     @property
     def used_pct(self):
         return round(self.used * 100 / self.target, 0)
 
     @property
+    def saved_pct(self):
+        return round(self.saved * 100 / self.target, 0)
+
+    @property
     def amount_per_month(self):
         return min(round(self.target / 12, 0), self.remaining)
 
 
-class Category(namedtuple('Category', ['name', 'color'])):
-    @classmethod
-    def from_dict(cls, dct):
-        return cls(name=dct['name'], color=dct.get('color'))
+def compute_savings_goals(budgets, savings_goals, debug=False):
+    if not savings_goals:
+        return []
 
-    def to_dict(self):
-        return {
-            'name': self.name,
-            'color': self.color
-        }
-
-
-class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'amount', 'pct'])):
-    @classmethod
-    def from_category(cls, category, **kwargs):
-        return cls(name=category.name, color=category.color, **kwargs)
-
-
-def period_to_months(start_date, end_date):
-    dates = [start_date.replace(day=1)]
-    end_date = end_date.replace(day=1) - monthdelta(1)
-    while dates[-1] < end_date:
-        dates.append(dates[-1] + monthdelta(1))
-    return dates
-
-
-def compute_savings_goals(budgets, savings_goals):
-    amounts = {}
-    for tx in budgets.transactions:
-        if tx.goal:
-            amounts.setdefault(tx.goal, 0)
-            amounts[tx.goal] += tx.amount
-
-    used = {}
-    saved = {}
-    for goal in savings_goals:
-        used[goal.label] = 0
-        saved[goal.label] = 0
-
-    remaining_goals = list(savings_goals)
+    used = {g.label: 0 for g in savings_goals}
+    saved = dict(used)
+    remaining_goals = [g.label for g in savings_goals]
     current_month = datetime.datetime.now().replace(day=1).date()
-    for i, budget in enumerate(budgets):
-        if budget.month >= current_month:
+    total_savings = 0
+
+    def _debug(message):
+        if debug:
+            print message
+
+    _debug('STARTING COMPUTING OF SAVINGS GOALS')
+
+    # for each months
+    for budget in budgets:
+        if budget.month > current_month:
+            # only past months
             break
+
+        savings = budget.savings if budget.month < current_month else budget.expected_savings
+        _debug('%s = %s (before=%s)' % (budget.month.isoformat(), savings, total_savings))
+
+        # computing the amount used from each goals based on the marked transactions
         for tx in budget.transactions:
             if tx.goal and tx.goal in used and tx.amount < 0:
                 used[tx.goal] += abs(tx.amount)
-        savings_per_goal = budget.savings / len(remaining_goals)
-        for goal in savings_goals:
-            if goal not in remaining_goals:
+                _debug(' -> Using %s from %s' % (abs(tx.amount), tx.goal))
+                if tx.goal not in remaining_goals:
+                    savings += abs(tx.amount)
+                    _debug('   -> Goal already completed, giving %s to savings' % abs(tx.amount))
+
+        if savings < 0 and total_savings <= 0:
+            # we used money from our savings this month and there is no savings left already (...)
+            total_savings += savings
+            continue
+        if total_savings < 0:
+            # we have some savings this month, but we had a negative balance until now
+            _debug(' -> Using %s from new savings to pay off balance (remaining=%s)' % (abs(total_savings), total_savings + savings))
+            total_savings += savings
+            if total_savings < 0:
                 continue
-            saved[goal.label] = min(saved[goal.label] + savings_per_goal, goal.amount)
-            if saved[goal.label] == goal.amount:
-                remaining_goals.remove(goal)
+            savings = total_savings
+        else:
+            total_savings += savings
+
+        # we use a while loop because if some goal completes during the loop
+        # it may have some letfover savings that we will dispatch amongst other goals
+        while savings != 0 and remaining_goals:
+            savings_per_goal = savings / len(remaining_goals)
+            savings = 0
+            for goal in filter(lambda g: g.label in remaining_goals, savings_goals):
+                target = goal.amount
+                new_save = max(saved[goal.label] + savings_per_goal, 0)
+                completed = used[goal.label] + saved[goal.label]
+                new_completed = max(completed + savings_per_goal, 0)
+                if new_completed >= target:
+                    give_back = new_completed - target
+                    savings += give_back
+                    new_save = min(new_save, target)
+                    _debug(' -> Giving %s to %s and giving back %s to savings (saved=%s, used=%s remaining=COMPLETED!)' % (
+                        new_save - saved[goal.label], goal.label, give_back, new_save, used[goal.label]))
+                    saved[goal.label] = new_save
+                    remaining_goals.remove(goal.label)
+                elif new_completed < completed:
+                    take_back = saved[goal.label] - new_save
+                    saved[goal.label] = new_save
+                    _debug(' -> Taking %s from %s (saved=%s, used=%s, remaining=%s)' % (
+                        take_back, goal.label, new_save, used[goal.label], target - new_completed))
+                else:
+                    saved[goal.label] = new_save
+                    _debug(' -> Giving %s to %s (saved=%s, used=%s, remaining=%s)' % (
+                        new_completed - completed, goal.label, new_save, used[goal.label], target - new_completed))
+
+        if total_savings < 0:
+            _debug(' -> Not enough savings to cover this month (remaining=%s)' % total_savings)
+                    
+        if not remaining_goals:
+            break
+
+    _debug('END COMPUTING OF SAVINGS GOALS (savings=%s)' % total_savings)
 
     computed = []
     for goal in savings_goals:
         computed.append(ComputedSavingsGoal.from_savings_goal(goal,
-            saved=saved[goal.label], used=used[goal.label]))
+            saved=round(saved[goal.label], 2), used=round(used[goal.label], 2)))
     return computed
-
-
-def compute_categories(transactions, categories=None, start_date=None, end_date=None):
-    categories = {c.name: c for c in categories or []}
-    amounts = {}
-    total = 0
-    for tx in filter_transactions_period(transactions, start_date, end_date):
-        if tx.amount >= 0:
-            continue
-        total += abs(tx.amount)
-        for name in (tx.categories or []):
-            amounts.setdefault(name, 0)
-            amounts[name] += abs(tx.amount)
-    categorized_total = sum(amounts.values())
-    if total - categorized_total > 0:
-        amounts[None] = total - categorized_total
-
-    final = []
-    for name, amount in sorted(amounts.items(), key=lambda t: t[0]):
-        pct = round(amount * 100 / total, 0)
-        if name in categories:
-            final.append(ComputedCategory.from_category(categories[name], amount=amount, pct=pct))
-        else:
-            final.append(ComputedCategory(name=name, color=None, amount=amount, pct=pct))
-    for category in categories.values():
-        if category.name not in amounts:
-            final.append(ComputedCategory.from_category(category, amount=0, pct=0))
-
-    return final
 
 
 def budgetize(transactions, start_date, end_date, *args, **kwargs):
@@ -304,12 +313,7 @@ def budgetize(transactions, start_date, end_date, *args, **kwargs):
     return budgets
 
 
-def _filter_period(objs, from_date, to_date):
-    return filter(lambda obj: (not obj.from_date or obj.from_date < from_date)\
-        and (not obj.to_date or obj.to_date >= to_date), objs)
-
-
-def budgetize_month(transactions, date, income_sources=None, recurring_expenses=None, savings_goals=None, income_delay=0):
+def budgetize_month(transactions, date, income_sources=None, planned_expenses=None, savings_goals=None, income_delay=0):
     start_date = date.replace(day=1)
     end_date = start_date + monthdelta(1)
 
@@ -324,17 +328,17 @@ def budgetize_month(transactions, date, income_sources=None, recurring_expenses=
 
     expected_income = 0
     if income_sources:
-        income_sources = _filter_period(income_sources, start_date, end_date)
+        income_sources = filter_period(income_sources, start_date, end_date)
         expected_income = sum([src.amount for src in income_sources])
 
-    recurring_expenses_transactions = []
-    expected_recurring_expenses = 0
-    if recurring_expenses:
-        recurring_expenses = _filter_period(recurring_expenses, start_date, end_date)
-        recurring_expenses_labels = [exp.match for exp in recurring_expenses if exp.match]
-        expected_recurring_expenses = sum([exp.amount_per_month for exp in recurring_expenses])
-        recurring_expenses_transactions, expenses_transactions = extract_transactions_by_label(
-            expenses_transactions, recurring_expenses_labels)
+    planned_expenses_transactions = []
+    expected_planned_expenses = 0
+    if planned_expenses:
+        planned_expenses = filter_period(planned_expenses, start_date, end_date)
+        planned_expenses_labels = [exp.match for exp in planned_expenses if exp.match]
+        expected_planned_expenses = sum([exp.amount_per_month for exp in planned_expenses])
+        planned_expenses_transactions, expenses_transactions = extract_transactions_by_label(
+            expenses_transactions, planned_expenses_labels)
 
     savings_goal = 0
     if savings_goals:
@@ -343,30 +347,35 @@ def budgetize_month(transactions, date, income_sources=None, recurring_expenses=
     real_balance = sum([tx.amount for tx in transactions])
     income = sum([tx.amount for tx in income_transactions])
     expenses = abs(sum([tx.amount for tx in expenses_transactions]))
-    recurring_expenses = abs(sum([tx.amount for tx in recurring_expenses_transactions]))
-    savings = income - expected_recurring_expenses - expenses
+    planned_expenses = abs(sum([tx.amount for tx in planned_expenses_transactions]))
+    savings = income - expected_planned_expenses - expenses
     balance = savings - savings_goal
 
-    expected_real_balance = max(income, expected_income) - recurring_expenses - expenses
-    expected_savings = max(income, expected_income) - expected_recurring_expenses - expenses
+    expected_real_balance = max(income, expected_income) - planned_expenses - expenses
+    expected_savings = max(income, expected_income) - expected_planned_expenses - expenses
     expected_balance = expected_savings - savings_goal
     expected_remaining = max(expected_balance, 0)
 
     return Budget(month=start_date,
                   transactions=transactions,
                   income_transactions=income_transactions,
-                  recurring_expenses_transactions=recurring_expenses_transactions,
+                  planned_expenses_transactions=planned_expenses_transactions,
                   expenses_transactions=expenses_transactions,
                   real_balance=round(real_balance, 2),
                   balance=round(balance, 2),
                   income=round(income, 2),
-                  recurring_expenses=round(recurring_expenses, 2),
+                  planned_expenses=round(planned_expenses, 2),
                   expenses=round(expenses, 2),
                   savings=round(savings, 2),
                   savings_goal=round(savings_goal, 2),
                   expected_real_balance=round(expected_real_balance, 2),
                   expected_balance=round(expected_balance, 2),
                   expected_income=round(expected_income, 2),
-                  expected_recurring_expenses=round(expected_recurring_expenses, 2),
+                  expected_planned_expenses=round(expected_planned_expenses, 2),
                   expected_savings=round(expected_savings, 2),
                   expected_remaining=round(expected_remaining, 2))
+
+
+def filter_period(objs, from_date, to_date):
+    return filter(lambda obj: (not obj.from_date or obj.from_date <= from_date)\
+        and (not obj.to_date or obj.to_date > from_date or obj.to_date > to_date), objs)

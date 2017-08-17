@@ -79,6 +79,9 @@ hr {
   font-family: monospace;
   cursor: pointer;
 }
+  #accounts > .balance:hover {
+    text-decoration: underline;
+  }
   #accounts > .yearly-savings {
     display: none;
     margin: 20px 0;
@@ -119,6 +122,28 @@ hr {
     display: table;
   }
 
+.goal-bar {
+  border: 1px solid #ccc;
+  padding: 1px;
+  height: 10px;
+  width: 100%;
+  display: flex;
+}
+  .goal-bar > span {
+    flex: 0 0 auto;
+    height: 100%;
+  }
+  .goal-bar > span.used {
+    background-color: #e4e4e4;
+  }
+  .goal-bar > span.saved {
+    background-color: #99cc7b;
+  }
+  .goal-bar > span.remaining,
+  .goal-bar.success > span.saved {
+    flex: 1 1 auto;
+  }
+
 #header {
   margin: -10px -10px 30px;
   padding: 20px;
@@ -147,6 +172,9 @@ hr {
     font-size: 28px;
     text-decoration: none;
     color: #fff;
+  }
+  #header form + a {
+    margin-left: 10px;
   }
 #update-form {
   flex: 0 0 30px;
@@ -229,6 +257,9 @@ hr {
     display: flex;
     align-items: center;
   }
+  .transactions li.hide {
+    display: none;
+  }
     .transactions li > span {
       display: inline-block;
     }
@@ -247,7 +278,7 @@ hr {
     .transactions li .category {
       flex: 0 0 15px;
       height: 15px;
-      margin: 0 5px;
+      margin: 0 2px;
       text-indent: -9999px;
       overflow: hidden;
       cursor: pointer;
@@ -263,7 +294,7 @@ hr {
       color: #777;
     }
     .transactions li .amount {
-      flex: 0 0 70px;
+      flex: 0 0 80px;
       font-family: monospace;
       font-size: 14px;
       font-weight: bold;
@@ -281,13 +312,19 @@ hr {
     flex: 1 1 auto;
     height: 100%;
     border: 1px solid #fff;
+    cursor: pointer;
   }
 
-#show-more {
+#show-more,
+#clear-filter {
   display: block;
   text-align: center;
   padding: 5px;
   color: #aaa;
+}
+
+#clear-filter {
+  display: none;
 }
 
 #nodata {
@@ -412,7 +449,7 @@ hr {
     right: 0;
     bottom: 0;
     left: 0;
-    opacity: .5;
+    opacity: .7;
     background: #fff;
     z-index: 1000;
   }
@@ -422,11 +459,14 @@ hr {
     top: 50%;
     transform: translateX(-50%) translateY(-50%);
     width: 500px;
+    max-width: 95%;
+    max-height: 95%;
     padding: 20px;
     background: #fff;
-    border: 1px solid #eee;
+    border: 1px solid #ccc;
     box-shadow: 0 0 15px rgba(0, 0, 0, .1);
     z-index: 1001;
+    overflow: auto;
   }
     #transaction-options fieldset {
       border: 0;
