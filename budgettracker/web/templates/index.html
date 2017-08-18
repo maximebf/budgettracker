@@ -232,7 +232,7 @@
     <div class="yearly-savings">
       Savings this year: {{famount(budgets.savings)}}
       {% if budget.savings_goal %} / {{famount(budgets.savings_goal)}}
-      ({{famount(budgets.savings - budgets.savings_goal)}}){% endif %}<br>
+      ({{famount(budgets.savings_balance)}}){% endif %}<br>
       <small>Available savings after goals: {{famount(savings_after_goals)}}</small>
     </div>
   </div>

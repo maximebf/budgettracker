@@ -50,7 +50,7 @@ class BudgetList(list):
         for budget in self:
             if budget.month == current and not key.startswith('expected_') and hasattr(budget, 'expected_%s' % key):
                 total += getattr(budget, 'expected_%s' % key)
-            else:
+            elif budget.month < current:
                 total += getattr(budget, key)
         return total
 
@@ -97,6 +97,20 @@ class BudgetList(list):
     @property
     def savings_goal(self):
         return self._sum('savings_goal')
+
+    @property
+    def savings_balance(self):
+        if datetime.date.today().month == 1:
+            return 0
+        return self.savings - self.savings_goal
+
+    @property
+    def adjusted_savings_goal(self):
+        balance = self.savings_balance
+        if balance < 0:
+            remaining_months = 12 - datetime.date.today().month - 1
+            return self.current.savings_goal + abs(balance) / remaining_months
+        return self.current.savings_goal
 
     def get_from_date(self, date):
         date = date.replace(day=1)
