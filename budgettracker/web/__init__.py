@@ -7,7 +7,8 @@ from ..budget import IncomeSource, PlannedExpense, BudgetGoal
 from ..categories import Category
 from ..helpers import (load_config, save_config, get_storage_from_config, get_bank_adapter_from_config,
                        load_yearly_budgets_from_config, load_monthly_budget_from_config, update_local_data,
-                       compute_yearly_budget_goals_from_config, compute_monthly_categories_from_config, rematch_categories)
+                       compute_yearly_budget_goals_from_config, compute_monthly_categories_from_config,
+                       rematch_categories, create_amount_formatter)
 
 
 app = Flask(__name__)
@@ -15,8 +16,12 @@ config = load_config()
 storage = get_storage_from_config(config)
 bank_adapter = get_bank_adapter_from_config(config)
 app.config['SECRET_KEY'] = config.get('web_passcode', 'budgettracker')
-app.config['CURRENCY'] = config.get('currency', '$')
 app.config.update(config.get('web_config', {}))
+
+
+@app.context_processor
+def utility_processor():
+    return dict(famount=create_amount_formatter(config))
 
 
 def requires_passcode(func):

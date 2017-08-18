@@ -13,7 +13,7 @@
     {% else %}
       <span class="category" onclick="showTransactionOptions(event)"></span>
     {% endif %}
-    <span class="amount {{ 'warn' if is_planned else ('pos' if tx.amount >= 0 else 'neg') }}">{{tx.amount}}{{config['CURRENCY']}}</span>
+    <span class="amount {{ 'warn' if is_planned else ('pos' if tx.amount >= 0 else 'neg') }}">{{famount(tx.amount)}}</span>
   </li>
 {%- endmacro %}
 

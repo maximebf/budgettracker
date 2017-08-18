@@ -169,3 +169,13 @@ def notify_using_config(config, message):
     if config.get('notify_adapter'):
         adapter = import_module('budgettracker.notify_adapters.' + config['notify_adapter'])
         adapter.send(config, message)
+
+
+def create_amount_formatter(config):
+    def formatter(amount, show_sign=False):
+        sign = ''
+        if show_sign or amount < 0:
+            sign = '+' if amount >= 0 else '-'
+            amount = abs(amount)
+        return config.get('amount_format', '{sign}${amount:.2f}').format(sign=sign, amount=amount)
+    return formatter

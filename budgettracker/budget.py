@@ -144,7 +144,7 @@ class PlannedExpense(namedtuple('PlannedExpense', ['label', 'amount', 'recurrenc
 
     @property
     def amount_per_month(self):
-        return round(self.amount / self.recurrence, 0)
+        return self.amount / self.recurrence
 
     @property
     def recurrence_label(self):
@@ -172,7 +172,7 @@ class BudgetGoal(namedtuple('BudgetGoal', ['label', 'amount'])):
 
     @property
     def savings_per_month(self):
-        return round(self.amount / 12, 0)
+        return self.amount / 12
 
     def to_dict(self):
         return {
@@ -212,13 +212,13 @@ class ComputedBudgetGoal(namedtuple('ComputedBudgetGoal', ['label', 'target', 's
 
     @property
     def savings_per_month(self):
-        return min(round(self.target / 12, 0), self.remaining)
+        return min(self.target / 12, self.remaining)
 
-    def to_str(self, currency=''):
-        return "%s: %s%s / %s%s (%s%%) [used=%s%s saved=%s%s remaining=%s%s]" % (
-            self.label, self.completed_amount, currency, self.target, currency,
-            self.completed_pct, self.used, currency, self.saved, currency,
-            self.remaining, currency)
+    def to_str(self, famount):
+        return "%s: %s / %s (%s%%) [used=%s saved=%s remaining=%s]" % (
+            self.label, famount(self.completed_amount), famount(self.target),
+            self.completed_pct, famount(self.used), famount(self.saved),
+            famount(self.remaining))
 
 
 def compute_budget_goals(budgets, budget_goals, debug=False):
@@ -308,7 +308,7 @@ def compute_budget_goals(budgets, budget_goals, debug=False):
     computed = []
     for goal in budget_goals:
         computed.append(ComputedBudgetGoal.from_savings_goal(goal,
-            saved=round(saved[goal.label], 2), used=round(used[goal.label], 2)))
+            saved=saved[goal.label], used=used[goal.label]))
     return computed
 
 
@@ -367,19 +367,19 @@ def budgetize_month(transactions, date, income_sources=None, planned_expenses=No
                   income_transactions=income_transactions,
                   planned_expenses_transactions=planned_expenses_transactions,
                   expenses_transactions=expenses_transactions,
-                  real_balance=round(real_balance, 2),
-                  balance=round(balance, 2),
-                  income=round(income, 2),
-                  planned_expenses=round(planned_expenses, 2),
-                  expenses=round(expenses, 2),
-                  savings=round(savings, 2),
-                  savings_goal=round(savings_goal, 2),
-                  expected_real_balance=round(expected_real_balance, 2),
-                  expected_balance=round(expected_balance, 2),
-                  expected_income=round(expected_income, 2),
-                  expected_planned_expenses=round(expected_planned_expenses, 2),
-                  expected_savings=round(expected_savings, 2),
-                  expected_remaining=round(expected_remaining, 2))
+                  real_balance=real_balance,
+                  balance=balance,
+                  income=income,
+                  planned_expenses=planned_expenses,
+                  expenses=expenses,
+                  savings=savings,
+                  savings_goal=savings_goal,
+                  expected_real_balance=expected_real_balance,
+                  expected_balance=expected_balance,
+                  expected_income=expected_income,
+                  expected_planned_expenses=expected_planned_expenses,
+                  expected_savings=expected_savings,
+                  expected_remaining=expected_remaining)
 
 
 def filter_period(objs, from_date, to_date):

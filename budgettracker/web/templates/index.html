@@ -146,7 +146,7 @@
 
 {% block page_header %}
   <div id="accounts" onclick="toggleAccounts()">
-    <div class="balance">{{account_balance or 0}}{{config['CURRENCY']}}</div>
+    <div class="balance">{{famount(account_balance or 0)}}</div>
     <table>
       <tr>
         <th colspan="2">Accounts</th>
@@ -154,7 +154,7 @@
       {% for acc in accounts %}
       <tr>
         <td width="80%">{{acc.title}}</td>
-        <td>{{acc.amount}}{{config['CURRENCY']}}</td>
+        <td>{{famount(acc.amount)}}</td>
       </tr>
       {% endfor %}
     </table>
@@ -165,21 +165,21 @@
       </tr>
       {% for goal in budget_goals %}
       <tr>
-        <td>{{goal.label}} ({{goal.target}}{{config['CURRENCY']}})</td>
+        <td>{{goal.label}} ({{famount(goal.target)}})</td>
         <td width="150">
           <div class="goal-bar {{'success' if not goal.remaining else ''}}">
             {% if goal.used %}
-            <span class="used" title="Used ({{goal.used}}{{config['CURRENCY']}}) ({{goal.used_pct}}%)"
+            <span class="used" title="Used ({{famount(goal.used)}}) ({{goal.used_pct}}%)"
               style="flex-basis: {{goal.used_pct}}%"></span>
             {% endif %}
             {% if goal.remaining %}
             {% if goal.saved %}
-            <span class="saved" title="Saved ({{goal.saved}}{{config['CURRENCY']}}) ({{goal.saved_pct}}%)"
+            <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"
               style="flex-basis: {{goal.saved_pct}}%"></span>
             {% endif %}
-            <span class="remaining" title="Remaining ({{goal.remaining}}{{config['CURRENCY']}}) ({{goal.remaining_pct}}%)"></span>
+            <span class="remaining" title="Remaining ({{famount(goal.remaining)}}) ({{goal.remaining_pct}}%)"></span>
             {% else %}
-            <span class="saved" title="Saved ({{goal.saved}}{{config['CURRENCY']}}) ({{goal.saved_pct}}%)"></span>
+            <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"></span>
             {% endif %}
           </div>
         </td>
@@ -188,8 +188,9 @@
     </table>
     {% endif %}
     <div class="yearly-savings">
-      Savings this year: {{budgets.savings}}{{config['CURRENCY']}}
-      {% if budget.savings_goal %} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}}){% endif %}
+      Savings this year: {{famount(budgets.savings)}}
+      {% if budget.savings_goal %} / {{famount(budgets.savings_goal)}}
+      ({{famount(budgets.savings - budgets.savings_goal)}}){% endif %}
     </div>
   </div>
   <div id="header">
@@ -214,7 +215,7 @@
       <div id="categories-bar">
         {% for category in categories %}
           {% if category.amount > 0 %}
-          <span title="{{category.name or 'Uncategorized'}} ({{category.amount}}{{config['CURRENCY']}}) ({{category.pct}}%)"
+          <span title="{{category.name or 'Uncategorized'}} ({{famount(category.amount)}}) ({{category.pct}}%)"
             style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"
             data-name="{{category.name or 'Uncategorized'}}" data-amount="{{category.amount}}"
             onclick="filterTransactions({{ ("'" + category.name + "'") if category.name else ''}})"></span>

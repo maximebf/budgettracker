@@ -5,14 +5,14 @@
       Safe to spend
       <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
     </div>
-    <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{budget.expected_remaining}}{{config['CURRENCY']}}</div>
+    <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{famount(budget.expected_remaining)}}</div>
     {% else %}
     <div class="title">
       <a href="{{url_for('edit_config')}}">Savings</a>
       <span class="tooltip">?<span>Savings made after <em>expected planned expenses</em> are taken into account. If negative then amount used from the savings to cover this month.</span></span>
     </div>
     <div class="value {{ 'neg' if budget.savings <= 0 else ('warn' if budget.savings < budget.savings_goal else 'pos') }}">
-      {{'{0:+}'.format(budget.savings)}}{{config['CURRENCY']}}
+      {{famount(budget.savings, True)}}
     </div>
     {% endif %}
     <ul class="warnings">
@@ -20,7 +20,7 @@
       {% if category.has_warning %}
       <li>
         <a href="javascript:" onclick="filterTransactions('{{category.name}}')">
-          &#9888; {{category.name}} ({{category.amount}}{{config['CURRENCY']}} / {{ category.warning_threshold}}{{config['CURRENCY']}})
+          &#9888; {{category.name}} ({{famount(category.amount)}} / {{famount(category.warning_threshold)}})
         </a>
       </li>
       {% endif %}
@@ -31,7 +31,7 @@
     <p class="big">
       <label><a href="{{url_for('edit_config')}}">Savings</a></label>
       <span class="value {{ 'neg' if budget.expected_savings <= 0 else ('warn' if budget.expected_savings < budget.savings_goal else 'pos') }}">
-        {{budget.expected_savings}}{{config['CURRENCY']}} {% if budget.savings_goal > 0 %}/ {{budget.savings_goal}}{{config['CURRENCY']}}{% endif %}
+        {{famount(budget.expected_savings)}} {% if budget.savings_goal > 0 %}/ {{famount(budget.savings_goal)}}{% endif %}
       </span>
     </p>
   {% else %}
@@ -40,12 +40,12 @@
       Budget Balance
       <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all planned expenses are taken into account)</span></span>
     </label>
-    <span class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{'{0:+}'.format(budget.balance)}}{{config['CURRENCY']}}</span>
+    <span class="value {{ 'neg' if budget.balance < 0 else 'pos' }}">{{famount(budget.balance, True)}}</span>
   </p>
   {% endif %}
   <p>
     <label>Real Balance</label>
-    <span class="value {{ 'neg' if budget.real_balance < 0 else 'pos' }}">{{'{0:+}'.format(budget.real_balance)}}{{config['CURRENCY']}}</span>
+    <span class="value {{ 'neg' if budget.real_balance < 0 else 'pos' }}">{{famount(budget.real_balance, True)}}</span>
   </p>
   <p>
     <label>
@@ -53,11 +53,11 @@
       <span class="tooltip">?<span><em>Expected income</em> is used unless month is finished or income higher than expected</span></span>
     </label>
     <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
-      {{max(budget.expected_income, budget.income) if not next_date else budget.income }}{{config['CURRENCY']}}
+      {{famount(max(budget.expected_income, budget.income) if not next_date else budget.income)}}
       {% if budget.income > budget.expected_income %}
-        (+{{budget.income - budget.expected_income}}{{config['CURRENCY']}})
+        ({{famount(budget.income - budget.expected_income, True)}})
       {% elif budget.income < budget.expected_income %}
-        (-{{budget.expected_income - budget.income}}{{config['CURRENCY']}})
+        ({{famount(budget.expected_income - budget.income, True)}})
       {% endif %}
     </span>
   </p>
@@ -68,7 +68,7 @@
       <span class="tooltip">?<span><em>Expected planned expenses</em> is used for calculations. The number in brackets is the actual amount of planned expenses detected during this month</span></span>
     </label>
     <span class="value neg">
-      {{budget.expected_planned_expenses}}{{config['CURRENCY']}} ({{budget.planned_expenses}}{{config['CURRENCY']}})
+      {{famount(budget.expected_planned_expenses)}} ({{famount(budget.planned_expenses)}})
     </span>
   </p>
   {% endif %}
@@ -77,6 +77,6 @@
       Expenses
       <span class="tooltip">?<span>Does not include planned expenses</span></span>
     </label>
-    <span class="value neg">{{budget.expenses}}{{config['CURRENCY']}}</span>
+    <span class="value neg">{{famount(budget.expenses)}}</span>
   </p>
 </div>

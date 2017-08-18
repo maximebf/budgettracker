@@ -28,9 +28,9 @@ class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'keyword
     def has_warning(self):
         return self.warning_threshold and self.amount > self.warning_threshold
 
-    def to_str(self, currency):
-        return "%s = %s%s (%s%%)%s" % (self.name or 'Uncategorized', self.amount, currency, self.pct,
-            ' /!\ %s%s' % (self.warning_threshold, currency) if self.has_warning else '')
+    def to_str(self, famount):
+        return "%s = %s (%s%%)%s" % (self.name or 'Uncategorized', famount(self.amount), self.pct,
+            ' /!\ %s' % (famount(self.warning_threshold)) if self.has_warning else '')
 
 
 def compute_categories(transactions, categories=None, start_date=None, end_date=None):

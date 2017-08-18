@@ -27,7 +27,7 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
             id=dct['id'],
             label=dct['label'],
             date=datetime.datetime.strptime(dct['date'], "%Y-%m-%d").date(),
-            amount=dct['amount'],
+            amount=float(dct['amount']),
             account=dct['account'],
             categories=dct.get('categories') or [],
             goal=dct.get('goal')
@@ -47,10 +47,10 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
             'goal': self.goal
         }
 
-    def to_str(self, currency=''):
-        return u"%s - %s = %s%s%s%s" % (self.date.isoformat(), self.label, self.amount, currency,
+    def to_str(self, famount):
+        return u"%s - %s = %s%s%s" % (self.date.isoformat(), self.label, famount(self.amount),
             ' #%s' % ', #'.join(self.categories) if self.categories else '',
-            ' [%s%s]' % (self.goal, currency) if self.goal else '')
+            ' [%s%s]' % (famount(self.goal)) if self.goal else '')
 
     def __unicode__(self):
         return self.to_str()

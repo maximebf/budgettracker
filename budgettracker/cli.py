@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from .helpers import (load_config, update_local_data, load_yearly_budgets_from_config, notify_using_config,
                       compute_yearly_budget_goals_from_config, compute_monthly_categories_from_config,
-                      rematch_categories, get_storage_from_config)
+                      rematch_categories, get_storage_from_config, create_amount_formatter)
 from .storage import get_storage
 import datetime, sys, os, json
 from getopt import getopt
@@ -9,6 +9,7 @@ from getopt import getopt
 
 config = load_config()
 storage = get_storage_from_config(config)
+famount = create_amount_formatter(config)
 commands = {}
 
 
@@ -49,53 +50,52 @@ def show(month=None, year=None, refresh=False):
     goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
     budget = budgets.get_from_date(date)
     
-    cur = config.get('currency', '$')
-    tx_formatter = lambda tx: tx.to_str(cur)
+    tx_formatter = lambda tx: tx.to_str(famount)
 
     print budget.month.strftime("%B %Y")
     print 
-    print u"Income = %s%s (expected = %s%s):" % (budget.income, cur, budget.expected_income, cur)
+    print u"Income = %s (expected = %s):" % (famount(budget.income), famount(budget.expected_income))
     print u"\n".join(map(tx_formatter, budget.income_transactions))
     print
-    print u"Planned expenses = %s%s (expected = %s%s):" % (budget.planned_expenses, cur, budget.expected_planned_expenses, cur)
+    print u"Planned expenses = %s (expected = %s):" % (famount(budget.planned_expenses), famount(budget.expected_planned_expenses))
     print u"\n".join(map(tx_formatter, budget.planned_expenses_transactions))
     print
-    print u"Expenses = %s%s:" % (budget.expenses, cur)
+    print u"Expenses = %s:" % famount(budget.expenses)
     print u"\n".join(map(tx_formatter, budget.expenses_transactions))
     print
     if categories:
         print u"Categories:"
-        print u"\n".join(map(lambda c: c.to_str(cur), categories))
+        print u"\n".join(map(lambda c: c.to_str(famount), categories))
         print
     if goals:
         print u"Budget goals:"
-        print u"\n".join(map(lambda g: g.to_str(cur), goals))
+        print u"\n".join(map(lambda g: g.to_str(famount), goals))
         print
     print "-----------------------------------------"
     print budget.month.strftime("%B %Y")
     print "-----------------------------------------"
-    print u"Available             = {0}{1}".format(balance, cur)
-    print u"Yearly savings        = {0}{1}".format(budgets.savings, cur)
+    print u"Available             = {0}".format(famount(balance))
+    print u"Yearly savings        = {0}".format(famount(budgets.savings))
     print "-----------------------------------------"
-    print u"Income                = {0}{1} ({2:+}{3})".format(budget.expected_income, cur, budget.income - budget.expected_income, cur)
-    print u"Planned expenses      = {0}{1} ({2}{3})".format(budget.expected_planned_expenses, cur, budget.planned_expenses, cur)
-    print u"Expenses              = {0}{1}".format(budget.expenses, cur)
+    print u"Income                = {0} ({1})".format(famount(budget.expected_income), famount(budget.income - budget.expected_income, True))
+    print u"Planned expenses      = {0} ({1})".format(famount(budget.expected_planned_expenses), famount(budget.planned_expenses))
+    print u"Expenses              = {0}".format(famount(budget.expenses))
     if is_current_month:
-        print u"Real Balance          = {0:+}{1}".format(budget.expected_real_balance, cur)
+        print u"Real Balance          = {0}".format(famount(budget.expected_real_balance, True))
         print "-----------------------------------------"
-        print u"Savings               = {0}{1} / {2}{3}".format(budget.expected_savings, cur, budget.savings_goal, cur)
-        print u"Safe to spend         = {0}{1}".format(budget.expected_remaining, cur)
+        print u"Savings               = {0} / {1}".format(famount(budget.expected_savings), famount(budget.savings_goal))
+        print u"Safe to spend         = {0}".format(famount(budget.expected_remaining))
     else:
-        print u"Real Balance          = {0:+}{1}".format(budget.real_balance, cur)
+        print u"Real Balance          = {0:+}".format(famount(budget.real_balance))
         print "-----------------------------------------"
-        print u"Savings               = {0}{1} / {2}{3}".format(budget.savings, cur, budget.savings_goal, cur)
-        print u"Budget balance        = {0:+}{1}".format(budget.balance, cur)
+        print u"Savings               = {0} / {1}".format(famount(budget.savings), famount(budget.savings_goal))
+        print u"Budget balance        = {0}".format(famount(budget.balance, True))
 
 
 @command()
 def analyze_savings():
     goals = compute_yearly_budget_goals_from_config(config, datetime.date.today(), storage=storage, debug=True)
-    print u"\n".join(map(lambda g: g.to_str(config.get('currency', '$')), goals))
+    print u"\n".join(map(lambda g: g.to_str(famount), goals))
 
 
 @command('', ['port=', 'debug'])
