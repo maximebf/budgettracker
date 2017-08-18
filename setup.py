@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='budgettracker',
-    version='0.9.0',
+    version='0.9.5',
     url='http://github.com/maximebf/budgettracker',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
@@ -21,7 +21,8 @@ setup(
         'unicodecsv',
         'flask',
         'monthdelta',
-        'ofxparse'
+        'ofxparse',
+        'PyYAML'
     ],
     entry_points='''
         [console_scripts]

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from .helpers import (load_config, update_local_data, load_yearly_budgets_from_config, notify_using_config,
-                      compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config,
+                      compute_yearly_budget_goals_from_config, compute_monthly_categories_from_config,
                       rematch_categories, get_storage_from_config)
 from .storage import get_storage
 import datetime, sys, os, json
@@ -46,14 +46,11 @@ def show(month=None, year=None, refresh=False):
     balance = sum([a.amount for a in storage.load_accounts()])
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
-    goals = compute_yearly_savings_goals_from_config(config, date, storage=storage)
+    goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
     budget = budgets.get_from_date(date)
     
     cur = config.get('currency', '$')
     tx_formatter = lambda tx: tx.to_str(cur)
-    category_formatter = lambda c: "%s = %s%s (%s%%)" % (c.name or 'Uncategorized', c.amount, cur, c.pct)
-    goal_formatter = lambda g: "%s: %s%s / %s%s (%s%%) [used=%s%s saved=%s%s remaining=%s%s]" % (
-        g.label, g.completed_amount, cur, g.target, cur, g.completed_pct, g.used, cur, g.saved, cur, g.remaining, cur)
 
     print budget.month.strftime("%B %Y")
     print 
@@ -68,11 +65,11 @@ def show(month=None, year=None, refresh=False):
     print
     if categories:
         print u"Categories:"
-        print u"\n".join(map(category_formatter, categories))
+        print u"\n".join(map(lambda c: c.to_str(cur), categories))
         print
     if goals:
-        print u"Savings goals:"
-        print u"\n".join(map(goal_formatter, goals))
+        print u"Budget goals:"
+        print u"\n".join(map(lambda g: g.to_str(cur), goals))
         print
     print "-----------------------------------------"
     print budget.month.strftime("%B %Y")
@@ -93,6 +90,12 @@ def show(month=None, year=None, refresh=False):
         print "-----------------------------------------"
         print u"Savings               = {0}{1} / {2}{3}".format(budget.savings, cur, budget.savings_goal, cur)
         print u"Budget balance        = {0:+}{1}".format(budget.balance, cur)
+
+
+@command()
+def analyze_savings():
+    goals = compute_yearly_budget_goals_from_config(config, datetime.date.today(), storage=storage, debug=True)
+    print u"\n".join(map(lambda g: g.to_str(config.get('currency', '$')), goals))
 
 
 @command('', ['port=', 'debug'])

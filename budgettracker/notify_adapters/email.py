@@ -9,7 +9,7 @@ def send(config, message):
     body = "\r\n".join([
         "From: %s" % from_email,
         "To: %s" % ', '.join(config.get('notify_emails', [])),
-        "Subject: Notification from BudgetTracker",
+        "Subject: %s" % message,
         "",
         message
     ])

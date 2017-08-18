@@ -1,7 +1,7 @@
-import time, os, datetime, json, codecs
+import time, os, datetime, codecs, yaml
 from .data import (extract_inter_account_transactions, filter_transactions_period, update_transactions,
                    update_accounts as _update_accounts, period_to_months)
-from .budget import budgetize, IncomeSource, PlannedExpense, SavingsGoal, compute_savings_goals
+from .budget import budgetize, IncomeSource, PlannedExpense, BudgetGoal, compute_budget_goals
 from .categories import compute_categories, Category, match_categories
 from .bank_adapters import get_bank_adapter
 from .storage import get_storage
@@ -10,7 +10,7 @@ from importlib import import_module
 
 
 ROOT_DIR = os.environ.get('BUDGET_DIR', '.')
-CONFIG_FILENAME = os.environ.get('BUDGET_CONFIG', os.path.join(ROOT_DIR, 'config.json'))
+CONFIG_FILENAME = os.environ.get('BUDGET_CONFIG', os.path.join(ROOT_DIR, 'config.yaml'))
 
 
 def get_bank_adapter_from_config(config, filename=None):
@@ -25,7 +25,7 @@ def load_config(filename=CONFIG_FILENAME):
     config = {}
     if os.path.exists(filename):
         with open(filename) as f:
-            config = json.load(f)
+            config = yaml.load(f)
     config = {k.lower(): v for k, v in config.items()}
     for k, v in os.environ.items():
         if k.startswith('BUDGET_') and k != 'BUDGET_CONFIG':
@@ -34,11 +34,11 @@ def load_config(filename=CONFIG_FILENAME):
 
 
 def save_config(config, filename=CONFIG_FILENAME):
-    with codecs.open(filename, 'w') as f:
-        json.dump(config, f, indent=2, sort_keys=2)
+    with codecs.open('config.yaml', 'w') as f:
+        yaml.safe_dump(config, f, default_flow_style=False)
 
 
-def budgetize_from_config(config, transactions, start_date, end_date, compute_savings_goals=True, storage=None):
+def budgetize_from_config(config, transactions, start_date, end_date, compute_budget_goals=True, storage=None):
     if config.get('inter_account_labels_out') and config.get('inter_account_labels_in'):
         _, transactions = extract_inter_account_transactions(transactions,
                 config['inter_account_labels_out'], config['inter_account_labels_in'])
@@ -47,13 +47,13 @@ def budgetize_from_config(config, transactions, start_date, end_date, compute_sa
     planned_expenses = map(PlannedExpense.from_dict, config.get('planned_expenses', []))
     income_delay = config.get('income_delay', 0)
 
-    if compute_savings_goals:
-        savings_goals = compute_yearly_savings_goals_from_config(config, start_date, storage)
+    if compute_budget_goals:
+        budget_goals = compute_yearly_budget_goals_from_config(config, start_date, storage)
     else:
-        savings_goals = map(SavingsGoal.from_dict, config.get('savings_goals', []))
+        budget_goals = map(BudgetGoal.from_dict, config.get('budget_goals', []))
 
     return budgetize(transactions, start_date, end_date, income_sources,
-        planned_expenses, savings_goals, income_delay)
+        planned_expenses, budget_goals, income_delay)
 
 
 def load_monthly_budget_from_config(config, date, storage=None):
@@ -67,7 +67,7 @@ def load_monthly_budget_from_config(config, date, storage=None):
     return budgetize_from_config(config, transactions, start_date, end_date)[0]
 
 
-def load_yearly_budgets_from_config(config, date, compute_savings_goals=True, storage=None):
+def load_yearly_budgets_from_config(config, date, compute_budget_goals=True, storage=None):
     if not storage:
         storage = get_storage_from_config(config)
     start_date = date.replace(day=1, month=1)
@@ -79,13 +79,14 @@ def load_yearly_budgets_from_config(config, date, compute_savings_goals=True, st
     if config.get('income_delay'):
         transactions.extend(storage.load_monthly_transactions(end_date))
 
-    return budgetize_from_config(config, transactions, start_date, end_date, compute_savings_goals)
+    return budgetize_from_config(config, transactions, start_date, end_date, compute_budget_goals)
 
 
-def compute_yearly_savings_goals_from_config(config, date, storage=None):
-    return compute_savings_goals(
+def compute_yearly_budget_goals_from_config(config, date, storage=None, debug=False):
+    return compute_budget_goals(
         load_yearly_budgets_from_config(config, date, False, storage),
-        map(SavingsGoal.from_dict, config.get('savings_goals', []))
+        map(BudgetGoal.from_dict, config.get('budget_goals', [])),
+        debug=debug
     )
 
 
@@ -142,9 +143,15 @@ def update_local_data(config, notify=True, date=None, storage=None, adapter=None
 
     if notify:
         if config.get('notify_remaining') and prev_budget.expected_remaining > config['notify_remaining'] and budget.expected_remaining <= config['notify_remaining']:
-            notify_using_config(config, 'BUDGET: /!\ LOW SAFE TO SPEND: %se' % budget.expected_remaining)
+            notify_using_config(config, 'BUDGET: /!\ LOW SAFE TO SPEND: %s' % budget.expected_remaining)
         elif config.get('notify_delta') and (prev_budget.expected_remaining - budget.expected_remaining) > config['notify_delta']:
-            notify_using_config(config, 'BUDGET: Remaining funds: %se' % budget.expected_remaining)
+            notify_using_config(config, 'BUDGET: Remaining funds: %s' % budget.expected_remaining)
+
+        categories = compute_monthly_categories_from_config(config, date, storage)
+        for category in categories:
+            if category.has_warning:
+                notify_using_config(config, 'BUDGET: /!\ CATEGORY WARNING: %s (%s / %s)' % (
+                    category.name, category.amount, category.warning_threshold))
 
 
 def rematch_categories(config, storage=None):

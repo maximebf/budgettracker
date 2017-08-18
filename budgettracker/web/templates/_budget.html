@@ -1,24 +1,31 @@
 <div class="budget">
   <div class="header">
     {% if not next_date %}
-    <div>
-      <div class="title">
-        Safe to spend
-        <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
-      </div>
-      <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{budget.expected_remaining}}{{config['CURRENCY']}}</div>
+    <div class="title">
+      Safe to spend
+      <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
     </div>
+    <div class="value {% if budget.expected_remaining > 0 %}pos{% else %}neg{% endif %}">{{budget.expected_remaining}}{{config['CURRENCY']}}</div>
     {% else %}
-    <div>
-      <div class="title">
-        <a href="{{url_for('edit_config')}}">Savings</a>
-        <span class="tooltip">?<span>Savings made after <em>expected planned expenses</em> are taken into account. If negative then amount used from the savings to cover this month.</span></span>
-      </div>
-      <div class="value {{ 'neg' if budget.savings <= 0 else ('warn' if budget.savings < budget.savings_goal else 'pos') }}">
-        {{'{0:+}'.format(budget.savings)}}{{config['CURRENCY']}}
-      </div>
+    <div class="title">
+      <a href="{{url_for('edit_config')}}">Savings</a>
+      <span class="tooltip">?<span>Savings made after <em>expected planned expenses</em> are taken into account. If negative then amount used from the savings to cover this month.</span></span>
+    </div>
+    <div class="value {{ 'neg' if budget.savings <= 0 else ('warn' if budget.savings < budget.savings_goal else 'pos') }}">
+      {{'{0:+}'.format(budget.savings)}}{{config['CURRENCY']}}
     </div>
     {% endif %}
+    <ul class="warnings">
+    {% for category in categories %}
+      {% if category.has_warning %}
+      <li>
+        <a href="javascript:" onclick="filterTransactions('{{category.name}}')">
+          &#9888; {{category.name}} ({{category.amount}}{{config['CURRENCY']}} / {{ category.warning_threshold}}{{config['CURRENCY']}})
+        </a>
+      </li>
+      {% endif %}
+    {% endfor %}
+    </ul>
   </div>
   {% if not next_date %}
     <p class="big">

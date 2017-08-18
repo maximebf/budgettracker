@@ -4,3 +4,4 @@ unicodecsv
 flask
 monthdelta
 ofxparse
+PyYAML

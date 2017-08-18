@@ -3,11 +3,11 @@ from werkzeug.utils import secure_filename
 from monthdelta import monthdelta
 from tempfile import NamedTemporaryFile
 import datetime, functools, json, unicodecsv, StringIO, os
-from ..budget import IncomeSource, PlannedExpense, SavingsGoal
+from ..budget import IncomeSource, PlannedExpense, BudgetGoal
 from ..categories import Category
 from ..helpers import (load_config, save_config, get_storage_from_config, get_bank_adapter_from_config,
                        load_yearly_budgets_from_config, load_monthly_budget_from_config, update_local_data,
-                       compute_yearly_savings_goals_from_config, compute_monthly_categories_from_config, rematch_categories)
+                       compute_yearly_budget_goals_from_config, compute_monthly_categories_from_config, rematch_categories)
 
 
 app = Flask(__name__)
@@ -59,7 +59,7 @@ def index(year=None, month=None):
 
     accounts = storage.load_accounts()
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
-    savings_goals = compute_yearly_savings_goals_from_config(config, date, storage=storage)
+    budget_goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
     category_colors = {c.name: c.color for c in categories}
 
@@ -75,7 +75,7 @@ def index(year=None, month=None):
         bank_adapter=bank_adapter,
         categories=categories,
         category_colors=category_colors,
-        savings_goals=savings_goals)
+        budget_goals=budget_goals)
 
 
 @app.route('/<int:year>-<int:month>/budget.json')
@@ -128,7 +128,7 @@ def update(year, month):
             abort(400)
         file = request.files['file']
         if config.get('imports_dir'):
-            filename = os.path.join(config.get['imports_dir'],
+            filename = os.path.join(config['imports_dir'],
                 '%s-%s' % (datetime.date.today().isoformat(), secure_filename(file.filename)))
             if not os.path.exists(os.path.dirname(filename)):
                 os.makedirs(os.path.dirname(filename))
@@ -152,6 +152,7 @@ def edit_config():
         date_cast = lambda d: datetime.datetime.strptime(d, '%Y-%m-%d').date() if d else ''
         color_cast = lambda c: '#%s' % c if not c.startswith('#') else c
         keywords_cast = lambda k: filter(bool, map(unicode.strip, k.split(',')))
+        warning_threshold_cast = lambda w: float(w) if w else None
         income_sources = map(lambda a: IncomeSource(*a), zip(
             request.form.getlist('income_sources_label'),
             request.form.getlist('income_sources_amount', float),
@@ -165,18 +166,19 @@ def edit_config():
             request.form.getlist('planned_expenses_match'),
             request.form.getlist('planned_expenses_from_date', date_cast),
             request.form.getlist('planned_expenses_to_date', date_cast)))
-        savings_goals = map(lambda a: SavingsGoal(*a), zip(
-            request.form.getlist('savings_goals_label'),
-            request.form.getlist('savings_goals_amount', float)))
+        budget_goals = map(lambda a: BudgetGoal(*a), zip(
+            request.form.getlist('budget_goals_label'),
+            request.form.getlist('budget_goals_amount', float)))
         categories = map(lambda a: Category(*a), zip(
             request.form.getlist('categories_name'),
             request.form.getlist('categories_color', color_cast),
-            request.form.getlist('categories_keywords', keywords_cast)))
+            request.form.getlist('categories_keywords', keywords_cast),
+            request.form.getlist('categories_warning_threshold', warning_threshold_cast)))
 
         config.update(
           income_sources=map(lambda s: s.to_dict(), income_sources),
           planned_expenses=map(lambda e: e.to_dict(), planned_expenses),
-          savings_goals=map(lambda g: g.to_dict(), savings_goals),
+          budget_goals=map(lambda g: g.to_dict(), budget_goals),
           categories=map(lambda c: c.to_dict(), categories))
 
         try:
@@ -192,5 +194,5 @@ def edit_config():
         config=config,
         income_sources=map(IncomeSource.from_dict, config.get('income_sources', [])),
         planned_expenses=map(PlannedExpense.from_dict, config.get('planned_expenses', [])),
-        savings_goals=map(SavingsGoal.from_dict, config.get('savings_goals', [])),
+        budget_goals=map(BudgetGoal.from_dict, config.get('budget_goals', [])),
         categories=map(Category.from_dict, config.get('categories', [])))

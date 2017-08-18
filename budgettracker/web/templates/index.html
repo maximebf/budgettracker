@@ -158,12 +158,12 @@
       </tr>
       {% endfor %}
     </table>
-    {% if savings_goals %}
+    {% if budget_goals %}
     <table>
       <tr>
-        <th colspan="2">Savings goals</th>
+        <th colspan="2">Budget goals</th>
       </tr>
-      {% for goal in savings_goals %}
+      {% for goal in budget_goals %}
       <tr>
         <td>{{goal.label}} ({{goal.target}}{{config['CURRENCY']}})</td>
         <td width="150">
@@ -188,7 +188,8 @@
     </table>
     {% endif %}
     <div class="yearly-savings">
-      Savings this year: {{budgets.savings}}{{config['CURRENCY']}} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}})
+      Savings this year: {{budgets.savings}}{{config['CURRENCY']}}
+      {% if budget.savings_goal %} / {{budgets.savings_goal}}{{config['CURRENCY']}} ({{budgets.savings - budgets.savings_goal}}{{config['CURRENCY']}}){% endif %}
     </div>
   </div>
   <div id="header">
@@ -256,11 +257,11 @@
         {% endfor %}
       </fieldset>
       <fieldset>
-        <legend>Savings goal:</legend>
+        <legend>Budget goal:</legend>
         <label class="goal">
           <input type="radio" name="goal" value=""> None
         </label>
-        {% for goal in savings_goals %}
+        {% for goal in budget_goals %}
           <label class="goal">
             <input type="radio" name="goal" value="{{goal.label}}">
             {{goal.label}}

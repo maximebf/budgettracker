@@ -1,7 +1,7 @@
 *.pyc
 /data
 /session.json
-/config.json
+/config.yaml
 /balance
 /budgettracker.egg-info
 /dist

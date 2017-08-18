@@ -57,8 +57,14 @@ class Transaction(namedtuple('Transaction', ['id', 'label', 'date', 'amount', 'a
 
 
 def update_accounts(old_accounts, new_accounts):
+    old = {acc.id: acc for acc in old_accounts}
     new_ids = [acc.id for acc in new_accounts]
-    final = list(new_accounts)
+    final = []
+    for acc in new_accounts:
+        if acc.id in old:
+            final.append(old[acc.id].update(amount=acc.amount))
+        else:
+            final.append(acc)
     for acc in old_accounts:
         if acc.id not in new_ids:
             final.append(acc)

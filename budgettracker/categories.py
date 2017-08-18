@@ -3,23 +3,34 @@ from .data import filter_transactions_period
 import re
 
 
-class Category(namedtuple('Category', ['name', 'color', 'keywords'])):
+class Category(namedtuple('Category', ['name', 'color', 'keywords', 'warning_threshold'])):
     @classmethod
     def from_dict(cls, dct):
-        return cls(name=dct['name'], color=dct.get('color'), keywords=dct.get('keywords', []))
+        return cls(name=dct['name'], color=dct.get('color'), keywords=dct.get('keywords', []),
+            warning_threshold=dct.get('warning_threshold'))
 
     def to_dict(self):
         return {
             'name': self.name,
             'color': self.color,
-            'keywords': self.keywords
+            'keywords': self.keywords,
+            'warning_threshold': self.warning_threshold
         }
 
 
-class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'keywords', 'amount', 'pct'])):
+class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'keywords', 'warning_threshold', 'amount', 'pct'])):
     @classmethod
     def from_category(cls, category, **kwargs):
-        return cls(name=category.name, color=category.color, keywords=category.keywords, **kwargs)
+        return cls(name=category.name, color=category.color, keywords=category.keywords,
+            warning_threshold=category.warning_threshold, **kwargs)
+
+    @property
+    def has_warning(self):
+        return self.warning_threshold and self.amount > self.warning_threshold
+
+    def to_str(self, currency):
+        return "%s = %s%s (%s%%)%s" % (self.name or 'Uncategorized', self.amount, currency, self.pct,
+            ' /!\ %s%s' % (self.warning_threshold, currency) if self.has_warning else '')
 
 
 def compute_categories(transactions, categories=None, start_date=None, end_date=None):
@@ -29,11 +40,13 @@ def compute_categories(transactions, categories=None, start_date=None, end_date=
     for tx in filter_transactions_period(transactions, start_date, end_date):
         if tx.amount >= 0:
             continue
-        total += abs(tx.amount)
+        if not tx.categories:
+            total += abs(tx.amount)
+            continue
         for name in sorted(tx.categories or []):
             amounts.setdefault(name, 0)
             amounts[name] += abs(tx.amount)
-            break
+            total += abs(tx.amount)
     categorized_total = sum(amounts.values())
     if total - categorized_total > 0:
         amounts[None] = total - categorized_total
@@ -44,11 +57,11 @@ def compute_categories(transactions, categories=None, start_date=None, end_date=
         if name in categories:
             final.append(ComputedCategory.from_category(categories[name], amount=amount, pct=pct))
         else:
-            final.append(ComputedCategory(name=name, color=None, keywords=[], amount=amount, pct=pct))
+            final.append(ComputedCategory(name=name, color=None, keywords=[],
+                warning_threshold=None, amount=amount, pct=pct))
     for category in categories.values():
         if category.name not in amounts:
             final.append(ComputedCategory.from_category(category, amount=0, pct=0))
-
     return final
 
 

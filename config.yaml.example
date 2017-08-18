@@ -1,0 +1,21 @@
+bank_adapter: ofx
+categories: []
+currency: €
+inter_account_labels_in: "REGEXP TO MATCH INCOMING TRANSFER"
+inter_account_labels_out: "REGEXP TO MATCH OUTGOING TRANSFER"
+notify_adapter: email
+notify_host: smtp.gmail.com:587
+notify_tls: true
+notify_username: you@gmail.com
+notify_password: PASSWORD
+notify_emails: ["you@gmail.com"]
+notify_balance: 200
+notify_delta: 200
+income_sources: []
+income_delay: 0
+planned_expenses: []
+budget_goals: []
+storage: csv
+storage_dir: data
+imports_dir: imports
+web_passcode:

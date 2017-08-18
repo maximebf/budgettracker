@@ -97,8 +97,8 @@
       <button type="button" onclick="addTemplateRow('planned_expenses')">&oplus; Add</button>
     </fieldset>
     <fieldset>
-      <legend>Savings Goals (per year)</legend>
-      <table id="savings_goals">
+      <legend>Budget Goals (per year)</legend>
+      <table id="budget_goals">
         <thead>
           <tr>
             <th>Label</th>
@@ -107,23 +107,23 @@
           </tr>
         </thead>
         <tbody>
-          {% for goal in savings_goals %}
+          {% for goal in budget_goals %}
           <tr>
-            <td><input type="text" value="{{goal.label}}" name="savings_goals_label" required></td>
-            <td><input type="number" value="{{goal.amount}}" name="savings_goals_amount" required></td>
+            <td><input type="text" value="{{goal.label}}" name="budget_goals_label" required></td>
+            <td><input type="number" value="{{goal.amount}}" name="budget_goals_amount" required></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      <template id="savings_goals_row">
+      <template id="budget_goals_row">
         <tr>
-          <td><input type="text" value="" name="savings_goals_label" required></td>
-          <td><input type="number" value="" name="savings_goals_amount" required></td>
+          <td><input type="text" value="" name="budget_goals_label" required></td>
+          <td><input type="number" value="" name="budget_goals_amount" required></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
-      <button type="button" onclick="addTemplateRow('savings_goals')">&oplus; Add</button>
+      <button type="button" onclick="addTemplateRow('budget_goals')">&oplus; Add</button>
     </fieldset>
     <fieldset>
       <legend>Categories</legend>
@@ -133,6 +133,7 @@
             <th width="150">Name</th>
             <th width="100">Color</th>
             <th>Keywords</th>
+            <th width="150">Warn. threshold</th>
             <th></th>
           </tr>
         </thead>
@@ -142,6 +143,7 @@
             <td><input type="text" value="{{category.name}}" name="categories_name" required></td>
             <td><input type="text" class="jscolor" value="{{category.color}}" name="categories_color"></td>
             <td><input type="text" value="{{", ".join(category.keywords)}}" name="categories_keywords"></td>
+            <td><input type="number" value="{{category.warning_threshold}}" name="categories_warning_threshold" step="any"></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
@@ -152,6 +154,7 @@
           <td><input type="text" value="" name="categories_name" required></td>
           <td><input type="text" class="jscolor" value="" name="categories_color"></td>
           <td><input type="text" value="" name="categories_keywords"></td>
+          <td><input type="number" value="" name="categories_warning_threshold" step="any"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>

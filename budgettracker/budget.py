@@ -165,13 +165,13 @@ class PlannedExpense(namedtuple('PlannedExpense', ['label', 'amount', 'recurrenc
         }
 
 
-class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
+class BudgetGoal(namedtuple('BudgetGoal', ['label', 'amount'])):
     @classmethod
     def from_dict(cls, dct):
         return cls(**dct)
 
     @property
-    def amount_per_month(self):
+    def savings_per_month(self):
         return round(self.amount / 12, 0)
 
     def to_dict(self):
@@ -181,7 +181,7 @@ class SavingsGoal(namedtuple('SavingsGoal', ['label', 'amount'])):
         }
 
 
-class ComputedSavingsGoal(namedtuple('ComputedSavingsGoal', ['label', 'target', 'saved', 'used'])):
+class ComputedBudgetGoal(namedtuple('ComputedBudgetGoal', ['label', 'target', 'saved', 'used'])):
     @classmethod
     def from_savings_goal(cls, goal, **kwargs):
         return cls(label=goal.label, target=goal.amount, **kwargs)
@@ -211,17 +211,23 @@ class ComputedSavingsGoal(namedtuple('ComputedSavingsGoal', ['label', 'target', 
         return round(self.saved * 100 / self.target, 0)
 
     @property
-    def amount_per_month(self):
+    def savings_per_month(self):
         return min(round(self.target / 12, 0), self.remaining)
 
+    def to_str(self, currency=''):
+        return "%s: %s%s / %s%s (%s%%) [used=%s%s saved=%s%s remaining=%s%s]" % (
+            self.label, self.completed_amount, currency, self.target, currency,
+            self.completed_pct, self.used, currency, self.saved, currency,
+            self.remaining, currency)
 
-def compute_savings_goals(budgets, savings_goals, debug=False):
-    if not savings_goals:
+
+def compute_budget_goals(budgets, budget_goals, debug=False):
+    if not budget_goals:
         return []
 
-    used = {g.label: 0 for g in savings_goals}
+    used = {g.label: 0 for g in budget_goals}
     saved = dict(used)
-    remaining_goals = [g.label for g in savings_goals]
+    remaining_goals = [g.label for g in budget_goals]
     current_month = datetime.datetime.now().replace(day=1).date()
     total_savings = 0
 
@@ -229,7 +235,7 @@ def compute_savings_goals(budgets, savings_goals, debug=False):
         if debug:
             print message
 
-    _debug('STARTING COMPUTING OF SAVINGS GOALS')
+    _debug('STARTING COMPUTING OF GOALS')
 
     # for each months
     for budget in budgets:
@@ -268,7 +274,7 @@ def compute_savings_goals(budgets, savings_goals, debug=False):
         while savings != 0 and remaining_goals:
             savings_per_goal = savings / len(remaining_goals)
             savings = 0
-            for goal in filter(lambda g: g.label in remaining_goals, savings_goals):
+            for goal in filter(lambda g: g.label in remaining_goals, budget_goals):
                 target = goal.amount
                 new_save = max(saved[goal.label] + savings_per_goal, 0)
                 completed = used[goal.label] + saved[goal.label]
@@ -297,11 +303,11 @@ def compute_savings_goals(budgets, savings_goals, debug=False):
         if not remaining_goals:
             break
 
-    _debug('END COMPUTING OF SAVINGS GOALS (savings=%s)' % total_savings)
+    _debug('END COMPUTING OF GOALS (savings=%s)' % total_savings)
 
     computed = []
-    for goal in savings_goals:
-        computed.append(ComputedSavingsGoal.from_savings_goal(goal,
+    for goal in budget_goals:
+        computed.append(ComputedBudgetGoal.from_savings_goal(goal,
             saved=round(saved[goal.label], 2), used=round(used[goal.label], 2)))
     return computed
 
@@ -313,7 +319,7 @@ def budgetize(transactions, start_date, end_date, *args, **kwargs):
     return budgets
 
 
-def budgetize_month(transactions, date, income_sources=None, planned_expenses=None, savings_goals=None, income_delay=0):
+def budgetize_month(transactions, date, income_sources=None, planned_expenses=None, budget_goals=None, income_delay=0):
     start_date = date.replace(day=1)
     end_date = start_date + monthdelta(1)
 
@@ -341,8 +347,8 @@ def budgetize_month(transactions, date, income_sources=None, planned_expenses=No
             expenses_transactions, planned_expenses_labels)
 
     savings_goal = 0
-    if savings_goals:
-        savings_goal = sum([s.amount_per_month for s in savings_goals])
+    if budget_goals:
+        savings_goal = sum([s.savings_per_month for s in budget_goals])
     
     real_balance = sum([tx.amount for tx in transactions])
     income = sum([tx.amount for tx in income_transactions])
