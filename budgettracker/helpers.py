@@ -14,7 +14,7 @@ CONFIG_FILENAME = os.environ.get('BUDGET_CONFIG', os.path.join(ROOT_DIR, 'config
 
 
 def get_bank_adapter_from_config(config, filename=None):
-    return get_bank_adapter(config.get('bank_adapter', 'ofx'))(config, filename)
+    return get_bank_adapter(config.get('bank_adapter', 'csv'))(config, filename)
 
 
 def get_storage_from_config(config):
