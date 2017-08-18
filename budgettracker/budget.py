@@ -222,7 +222,15 @@ class ComputedBudgetGoal(namedtuple('ComputedBudgetGoal', ['label', 'target', 's
 
 
 def compute_budget_goals(budgets, budget_goals, debug=False):
+    # TODO: reopen completed budget if we need to take from savings
+
+    def _debug(message):
+        if debug:
+            print message
+    _debug('STARTING COMPUTING OF GOALS')
+
     if not budget_goals:
+        _debug('No budget goals!')
         return []
 
     used = {g.label: 0 for g in budget_goals}
@@ -230,12 +238,7 @@ def compute_budget_goals(budgets, budget_goals, debug=False):
     remaining_goals = [g.label for g in budget_goals]
     current_month = datetime.datetime.now().replace(day=1).date()
     total_savings = 0
-
-    def _debug(message):
-        if debug:
-            print message
-
-    _debug('STARTING COMPUTING OF GOALS')
+    savings = 0
 
     # for each months
     for budget in budgets:
@@ -250,10 +253,10 @@ def compute_budget_goals(budgets, budget_goals, debug=False):
         for tx in budget.transactions:
             if tx.goal and tx.goal in used and tx.amount < 0:
                 used[tx.goal] += abs(tx.amount)
-                _debug(' -> Using %s from %s' % (abs(tx.amount), tx.goal))
+                _debug(' > Using %s from %s' % (abs(tx.amount), tx.goal))
                 if tx.goal not in remaining_goals:
                     savings += abs(tx.amount)
-                    _debug('   -> Goal already completed, giving %s to savings' % abs(tx.amount))
+                    _debug(' + Goal already completed, giving %s to savings' % abs(tx.amount))
 
         if savings < 0 and total_savings <= 0:
             # we used money from our savings this month and there is no savings left already (...)
@@ -261,7 +264,7 @@ def compute_budget_goals(budgets, budget_goals, debug=False):
             continue
         if total_savings < 0:
             # we have some savings this month, but we had a negative balance until now
-            _debug(' -> Using %s from new savings to pay off balance (remaining=%s)' % (abs(total_savings), total_savings + savings))
+            _debug(' - Using %s from new savings to pay off balance (remaining=%s)' % (abs(total_savings), total_savings + savings))
             total_savings += savings
             if total_savings < 0:
                 continue
@@ -282,34 +285,35 @@ def compute_budget_goals(budgets, budget_goals, debug=False):
                 if new_completed >= target:
                     give_back = new_completed - target
                     savings += give_back
-                    new_save = min(new_save, target)
-                    _debug(' -> Giving %s to %s and giving back %s to savings (saved=%s, used=%s remaining=COMPLETED!)' % (
-                        new_save - saved[goal.label], goal.label, give_back, new_save, used[goal.label]))
+                    new_save = min(new_save - give_back, target)
+                    _debug(' + Giving %s to %s (saved=%s, used=%s remaining=COMPLETED!, leftover=%s)' % (
+                        new_save - saved[goal.label], goal.label, new_save, used[goal.label], give_back))
                     saved[goal.label] = new_save
                     remaining_goals.remove(goal.label)
                 elif new_completed < completed:
                     take_back = saved[goal.label] - new_save
                     saved[goal.label] = new_save
-                    _debug(' -> Taking %s from %s (saved=%s, used=%s, remaining=%s)' % (
+                    _debug(' - Taking %s from %s (saved=%s, used=%s, remaining=%s)' % (
                         take_back, goal.label, new_save, used[goal.label], target - new_completed))
                 else:
                     saved[goal.label] = new_save
-                    _debug(' -> Giving %s to %s (saved=%s, used=%s, remaining=%s)' % (
+                    _debug(' + Giving %s to %s (saved=%s, used=%s, remaining=%s)' % (
                         new_completed - completed, goal.label, new_save, used[goal.label], target - new_completed))
 
         if total_savings < 0:
-            _debug(' -> Not enough savings to cover this month (remaining=%s)' % total_savings)
+            _debug(' ! Not enough savings to cover this month (remaining=%s)' % total_savings)
                     
         if not remaining_goals:
             break
 
-    _debug('END COMPUTING OF GOALS (savings=%s)' % total_savings)
+    savings_after_goals = max(total_savings - sum(saved.values()), 0)
+    _debug('END COMPUTING OF GOALS (savings=%s, after goals=%s)' % (total_savings, savings_after_goals))
 
     computed = []
     for goal in budget_goals:
         computed.append(ComputedBudgetGoal.from_savings_goal(goal,
             saved=saved[goal.label], used=used[goal.label]))
-    return computed
+    return computed, savings_after_goals
 
 
 def budgetize(transactions, start_date, end_date, *args, **kwargs):

@@ -64,7 +64,28 @@
         node.checked = (!tx.goal && node.value === '') || (tx.goal && node.value === tx.goal);
       });
 
+      document.querySelectorAll('#transaction-options label.category.new').forEach(function(node) {
+        node.parentNode.removeChild(node);
+      });
       document.querySelector('#transaction-options').classList.add('visible');
+    }
+
+    function addCategory(before) {
+      var name = prompt('Name:');
+      if (!name) {
+        return;
+      }
+      var label = document.createElement('label');
+      label.classList.add('category');
+      label.classList.add('new');
+      var check = document.createElement('input');
+      check.setAttribute('type', 'checkbox');
+      check.setAttribute('name', 'categories');
+      check.checked = true;
+      check.value = name;
+      label.appendChild(check);
+      label.appendChild(document.createTextNode(name));
+      before.parentNode.insertBefore(label, before);
     }
 
     function onTransactionOptionsFormSubmit(event) {
@@ -112,6 +133,9 @@
           span.onclick = showTransactionOptions;
           selectedTransactionNode.insertBefore(span, before);
         }
+        document.querySelectorAll('#transaction-options label.category.new').forEach(function(node) {
+          node.classList.remove('new');
+        });
         hideTransactionOptions();
       });
       req.open("POST", form.action);
@@ -122,7 +146,7 @@
       document.querySelector('#transaction-options').classList.remove('visible');
     }
 
-    function filterTransactions(category) {
+    function filterTransactions(category, title) {
       showAllTransactions();
       document.querySelectorAll('ul.transactions li').forEach(function(node) {
         var tx = transactionNodeToObject(node);
@@ -132,6 +156,11 @@
           node.classList.remove('hide');
         }
       });
+
+      var title = document.querySelector('#category-title');
+      title.innerText = document.querySelector('#categories-bar > span[data-name="'
+        + (category || 'Uncategorized') + '"]').getAttribute('title');
+      title.style.display = 'block';
       document.querySelector('#clear-filter').style.display = 'block';
     }
 
@@ -139,7 +168,20 @@
       document.querySelectorAll('ul.transactions li').forEach(function(node) {
         node.classList.remove('hide');
       });
+      document.querySelector('#category-title').style.display = 'none';
       document.querySelector('#clear-filter').style.display = 'none';
+    }
+
+    function toggleYearOverview() {
+      var header = document.querySelector('#header');
+      var overview = document.querySelector('#year-overview');
+      if (overview.style.display == 'flex') {
+        header.style.borderBottomWidth = '9px';
+        overview.style.display = 'none';
+      } else {
+        header.style.borderBottomWidth = 0;
+        overview.style.display = 'flex';
+      }
     }
   </script>
 {% endblock %}
@@ -190,12 +232,13 @@
     <div class="yearly-savings">
       Savings this year: {{famount(budgets.savings)}}
       {% if budget.savings_goal %} / {{famount(budgets.savings_goal)}}
-      ({{famount(budgets.savings - budgets.savings_goal)}}){% endif %}
+      ({{famount(budgets.savings - budgets.savings_goal)}}){% endif %}<br>
+      <small>Available savings after goals: {{famount(savings_after_goals)}}</small>
     </div>
   </div>
   <div id="header">
     <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
-    <h1 id="month">{{date.strftime('%B %Y')}}</h1>
+    <h1 id="month" onclick="toggleYearOverview()">{{date.strftime('%B %Y')}}</h1>
     <form action="{{url_for('update', year=date.year, month=date.month)}}" method="POST" enctype="multipart/form-data" id="update-form">
       {% if bank_adapter.fetch_type == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
       <button type="{{ 'submit' if bank_adapter.fetch_type == 'web' else 'button' }}" title="Update data ({{bank_adapter.name}})"
@@ -204,6 +247,14 @@
     {% if next_date %}
       <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
     {% endif %}
+  </div>
+  <div id="year-overview">
+    {% for month, label in months %}
+      <a class="{% if budgets|length - 2 >= month and budgets[month].transactions|length > 0 %}{{ 'neg' if budgets[month].savings <= 0 else ('warn' if budgets[month].savings < budgets[month].savings_goal else 'pos') }}{% elif budgets|length - 1 == month %}current{% endif %}" href="{{url_for('index', year=date.year, month=month + 1) if budgets|length - 1 >= month else 'javascript:'}}"
+        title="{% if budgets|length - 2 >= month %}{{famount(budgets[month].savings, True)}}{% endif %}">
+        {{label}}
+      </a>
+    {% endfor %}
   </div>
 {% endblock %}
 
@@ -215,13 +266,14 @@
       <div id="categories-bar">
         {% for category in categories %}
           {% if category.amount > 0 %}
-          <span title="{{category.name or 'Uncategorized'}} ({{famount(category.amount)}}) ({{category.pct}}%)"
+          <span title="{% if category.has_warning %}&#9888; {% endif %}{{category.name or 'Uncategorized'}}: {{famount(category.amount)}}{% if category.warning_threshold %} / {{famount(category.warning_threshold)}}{% endif %} ({{category.pct}}%)"
             style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"
             data-name="{{category.name or 'Uncategorized'}}" data-amount="{{category.amount}}"
             onclick="filterTransactions({{ ("'" + category.name + "'") if category.name else ''}})"></span>
           {% endif %}
         {% endfor %}
       </div>
+      <h2 id="category-title"></h2>
     {% else %}
       <hr>
     {% endif %}
@@ -251,11 +303,11 @@
         {% for category in categories %}
           {% if category.name %}
             <label class="category" style="background-color: {{category.color or '#eee'}}">
-              <input type="checkbox" name="categories" value="{{category.name}}">
-              {{category.name}}
+              <input type="checkbox" name="categories" value="{{category.name}}">{{category.name}}
             </label>
           {% endif %}
         {% endfor %}
+        <a href="javascript:" onclick="addCategory(this)">Add category</a>
       </fieldset>
       <fieldset>
         <legend>Budget goal:</legend>

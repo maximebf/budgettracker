@@ -17,13 +17,13 @@ hr {
 }
 
 .neg {
-  color: #d21111;
+  color: #d21111 !important;
 }
 .warn {
-  color: #f7a436;
+  color: #f7a436 !important;
 }
 .pos {
-  color: #2cd211;
+  color: #2cd211 !important;
 }
 
 .tooltip {
@@ -145,7 +145,7 @@ hr {
   }
 
 #header {
-  margin: -10px -10px 30px;
+  margin: -10px -10px 0;
   padding: 20px;
   border-top-left-radius: 5px;
   border-top-right-radius: 5px;
@@ -164,7 +164,11 @@ hr {
     flex: 1 1 auto;
     margin: 0;
     padding: 0;
-    display: inline
+    display: inline;
+    cursor: pointer;
+  }
+  #header h1:hover {
+    text-decoration: underline;
   }
   #header > a,
   #header > span {
@@ -192,7 +196,37 @@ hr {
     padding: 0;
     width: 100%;
   }
+#year-overview {
+  background: #7bbbf7;
+  color: #fff;
+  border-bottom: 9px solid #5aa0e2;
+  margin: -10px -10px 0;
+  padding: 10px;
+  display: none;
+  justify-content: center;
+}
+  #year-overview > a {
+    display: inline-block;
+    margin: 0 5px;
+    padding: 5px 8px;
+    border: 2px solid #ddd;
+    border-top-width: 9px;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 12px;
+    text-decoration: none;
+    color: #aaa;
+  }
+  #year-overview > a.current {
+    border-color: #bbb;
+  }
+  #year-overview > a:hover {
+    border-color: #ccc;
+  }
 
+.budget {
+  margin-top: 30px;
+}
 .budget > .header {
   margin: 0 0 20px;
   text-align: center;
@@ -310,7 +344,7 @@ hr {
   height: 10px;
   border: 1px solid #efefef;
   width: 100%;
-  margin: 20px 0;
+  margin: 25px 0;
   display: flex;
 }
   #categories-bar > span {
@@ -319,6 +353,14 @@ hr {
     border: 1px solid #fff;
     cursor: pointer;
   }
+
+#category-title {
+  margin: 30px 0;
+  color: #bbb;
+  font-size: 20px;
+  text-align: center;
+  display: none;
+}
 
 #show-more,
 #clear-filter {
@@ -488,4 +530,12 @@ hr {
       padding: 4px 6px;
       margin: 5px 0;
       border-radius: 3px;
+      background: #eee;
+    }
+      #transaction-options label input[type="checkbox"] {
+        margin-right: 5px;
+      }
+    #transaction-options fieldset > a {
+      color: #aaa;
+      font-size: 12px;
     }

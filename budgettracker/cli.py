@@ -47,7 +47,7 @@ def show(month=None, year=None, refresh=False):
     balance = sum([a.amount for a in storage.load_accounts()])
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
-    goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
+    goals, savings_after_goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
     budget = budgets.get_from_date(date)
     
     tx_formatter = lambda tx: tx.to_str(famount)
@@ -76,6 +76,7 @@ def show(month=None, year=None, refresh=False):
     print "-----------------------------------------"
     print u"Available             = {0}".format(famount(balance))
     print u"Yearly savings        = {0}".format(famount(budgets.savings))
+    print u"Available savings     = {0}".format(famount(savings_after_goals))
     print "-----------------------------------------"
     print u"Income                = {0} ({1})".format(famount(budget.expected_income), famount(budget.income - budget.expected_income, True))
     print u"Planned expenses      = {0} ({1})".format(famount(budget.expected_planned_expenses), famount(budget.planned_expenses))
@@ -94,8 +95,14 @@ def show(month=None, year=None, refresh=False):
 
 @command()
 def analyze_savings():
-    goals = compute_yearly_budget_goals_from_config(config, datetime.date.today(), storage=storage, debug=True)
+    print "-----------------------------------------"
+    goals, savings_after_goals = compute_yearly_budget_goals_from_config(config, datetime.date.today(), storage=storage, debug=True)
+    print "-----------------------------------------"
+    print
+    print "Goals:"
     print u"\n".join(map(lambda g: g.to_str(famount), goals))
+    print
+    print "Savings after goals = %s" % famount(savings_after_goals)
 
 
 @command('', ['port=', 'debug'])

@@ -54,10 +54,12 @@
     </label>
     <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
       {{famount(max(budget.expected_income, budget.income) if not next_date else budget.income)}}
+      {% if budget.expected_income %}
       {% if budget.income > budget.expected_income %}
         ({{famount(budget.income - budget.expected_income, True)}})
       {% elif budget.income < budget.expected_income %}
         ({{famount(budget.expected_income - budget.income, True)}})
+      {% endif %}
       {% endif %}
     </span>
   </p>

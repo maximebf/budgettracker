@@ -34,7 +34,7 @@ def load_config(filename=CONFIG_FILENAME):
 
 
 def save_config(config, filename=CONFIG_FILENAME):
-    with codecs.open('config.yaml', 'w') as f:
+    with codecs.open(filename, 'w') as f:
         yaml.safe_dump(config, f, default_flow_style=False)
 
 
@@ -48,7 +48,7 @@ def budgetize_from_config(config, transactions, start_date, end_date, compute_bu
     income_delay = config.get('income_delay', 0)
 
     if compute_budget_goals:
-        budget_goals = compute_yearly_budget_goals_from_config(config, start_date, storage)
+        budget_goals, _ = compute_yearly_budget_goals_from_config(config, start_date, storage)
     else:
         budget_goals = map(BudgetGoal.from_dict, config.get('budget_goals', []))
 

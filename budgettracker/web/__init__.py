@@ -18,6 +18,8 @@ bank_adapter = get_bank_adapter_from_config(config)
 app.config['SECRET_KEY'] = config.get('web_passcode', 'budgettracker')
 app.config.update(config.get('web_config', {}))
 
+months_labels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
 
 @app.context_processor
 def utility_processor():
@@ -64,9 +66,10 @@ def index(year=None, month=None):
 
     accounts = storage.load_accounts()
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
-    budget_goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
+    budget_goals, savings_after_goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
     category_colors = {c.name: c.color for c in categories}
+    months = [(i, label) for i, label in enumerate(months_labels)]
 
     return render_template('index.html',
         date=date,
@@ -80,7 +83,9 @@ def index(year=None, month=None):
         bank_adapter=bank_adapter,
         categories=categories,
         category_colors=category_colors,
-        budget_goals=budget_goals)
+        budget_goals=budget_goals,
+        savings_after_goals=savings_after_goals,
+        months=months)
 
 
 @app.route('/<int:year>-<int:month>/budget.json')
@@ -117,8 +122,19 @@ def update_transaction(year, month, transaction_id):
     date = datetime.date(year, month, 1)
     categories = request.form.getlist('categories')
     goal = request.form.get('goal')
-    storage.update_transaction(date, transaction_id,
-        categories=categories, goal=goal)
+    storage.update_transaction(date, transaction_id, categories=categories, goal=goal)
+
+    existing_categories = [c['name'] for c in config.get('categories') or []]
+    has_new_categories = False
+    for category in categories:
+        if category not in existing_categories:
+            if not config.get('categories'):
+                config['categories'] = []
+            config['categories'].append({'name': category})
+            has_new_categories = True
+    if has_new_categories:
+        save_config(config)
+
     return ''
 
 
@@ -186,14 +202,9 @@ def edit_config():
           budget_goals=map(lambda g: g.to_dict(), budget_goals),
           categories=map(lambda c: c.to_dict(), categories))
 
-        try:
-            save_config(config)
-            rematch_categories(config, storage)
-            return redirect(url_for('index'))
-        except Exception as e:
-            raise
-            app.logger.error(e)
-
+        save_config(config)
+        rematch_categories(config, storage)
+        return redirect(url_for('index'))
 
     return render_template('config.html',
         config=config,
