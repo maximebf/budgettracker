@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from werkzeug.utils import secure_filename
 from monthdelta import monthdelta
 from tempfile import NamedTemporaryFile
-import datetime, functools, json, unicodecsv, StringIO, os
+import datetime, functools, json, unicodecsv, StringIO, os, uuid
 from ..budget import IncomeSource, PlannedExpense, BudgetGoal
 from ..categories import Category
 from ..helpers import (load_config, save_config, get_storage_from_config, get_bank_adapter_from_config,
@@ -16,6 +16,7 @@ config = load_config()
 storage = get_storage_from_config(config)
 bank_adapter = get_bank_adapter_from_config(config)
 app.config['SECRET_KEY'] = config.get('web_passcode', 'budgettracker')
+app.config['ASSETS_HASH'] = str(uuid.uuid4()).split('-')[0]
 app.config.update(config.get('web_config', {}))
 
 months_labels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']

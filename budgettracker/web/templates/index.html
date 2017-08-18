@@ -234,6 +234,9 @@
       {% if budget.savings_goal %} / {{famount(budgets.savings_goal)}}
       ({{famount(budgets.savings_balance)}}){% endif %}<br>
       <small>Available savings after goals: {{famount(savings_after_goals)}}</small>
+      {% if budgets.adjusted_savings_goal > budget.savings_goal %}
+      <br><small>Adjusted savings goal: {{famount(budgets.adjusted_savings_goal)}}</small>
+      {% endif %}
     </div>
   </div>
   <div id="header">
