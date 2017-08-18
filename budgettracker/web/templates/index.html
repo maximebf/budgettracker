@@ -189,6 +189,10 @@
 {% block page_header %}
   <div id="accounts" onclick="toggleAccounts()">
     <div class="balance">{{famount(account_balance or 0)}}</div>
+    <div class="remaining-planned">
+      Remaining planned expenses: {{famount(budgets.undetected_planned_expenses)}}<br>
+      <small>Balance after planned expenses: {{famount(account_balance - budgets.undetected_planned_expenses, True)}}</small>
+    </div>
     <table>
       <tr>
         <th colspan="2">Accounts</th>

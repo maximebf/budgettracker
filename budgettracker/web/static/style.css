@@ -82,12 +82,14 @@ hr {
   #accounts > .balance:hover {
     text-decoration: underline;
   }
-  #accounts > .yearly-savings {
+  #accounts > .yearly-savings,
+  #accounts > .remaining-planned {
     display: none;
     margin: 20px 0;
     font-size: 16px;
   }
-  #accounts.open > .yearly-savings {
+  #accounts.open > .yearly-savings,
+  #accounts.open > .remaining-planned {
     display: block;
   }
   #accounts > table {
@@ -219,6 +221,7 @@ hr {
   }
   #year-overview > a.current {
     border-color: #bbb;
+    color: #444;
   }
   #year-overview > a:hover {
     border-color: #ccc;
