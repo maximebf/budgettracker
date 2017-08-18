@@ -17,7 +17,7 @@ Also has a CLI interface (see below)
 
 ### Basic:
 
- - Easy to install & use, no database, no setup
+ - Easy to install & use, fast, no database, no setup, mobile compatible
  - Storage is flat files (CSV or JSON) which can be easily edited by hand or backed up
  - Transactions and accounts cannot be edited and must be synchronized from an external source
  - External sources can be files or web services (currently supports: CSV, OFX, bankin.com)
