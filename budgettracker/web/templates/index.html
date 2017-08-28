@@ -188,10 +188,12 @@
 
 {% block page_header %}
   <div id="accounts" onclick="toggleAccounts()">
-    <div class="balance">{{famount(account_balance or 0)}}</div>
+    <div class="balance">
+      {{famount(account_balance - budgets.undetected_planned_expenses)}}
+      ({{famount(account_balance or 0)}})
+    </div>
     <div class="remaining-planned">
       Remaining planned expenses: {{famount(budgets.undetected_planned_expenses)}}<br>
-      <small>Balance after planned expenses: {{famount(account_balance - budgets.undetected_planned_expenses, True)}}</small>
     </div>
     <table>
       <tr>
@@ -211,8 +213,9 @@
       </tr>
       {% for goal in budget_goals %}
       <tr>
-        <td>{{goal.label}} ({{famount(goal.target)}})</td>
+        <td>{{goal.label}}{% if goal.target %} ({{famount(goal.target)}}){% endif %}</td>
         <td width="150">
+          {% if goal.target %}
           <div class="goal-bar {{'success' if not goal.remaining else ''}}">
             {% if goal.used %}
             <span class="used" title="Used ({{famount(goal.used)}}) ({{goal.used_pct}}%)"
@@ -228,6 +231,9 @@
             <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"></span>
             {% endif %}
           </div>
+          {% else %}
+          {{famount(goal.used)}}
+          {% endif %}
         </td>
       </tr>
       {% endfor %}

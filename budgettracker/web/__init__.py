@@ -174,7 +174,7 @@ def edit_config():
         date_cast = lambda d: datetime.datetime.strptime(d, '%Y-%m-%d').date() if d else ''
         color_cast = lambda c: '#%s' % c if not c.startswith('#') else c
         keywords_cast = lambda k: filter(bool, map(unicode.strip, k.split(',')))
-        warning_threshold_cast = lambda w: float(w) if w else None
+        optional_float_cast = lambda f: float(f) if f else None
         income_sources = map(lambda a: IncomeSource(*a), zip(
             request.form.getlist('income_sources_label'),
             request.form.getlist('income_sources_amount', float),
@@ -190,12 +190,12 @@ def edit_config():
             request.form.getlist('planned_expenses_to_date', date_cast)))
         budget_goals = map(lambda a: BudgetGoal(*a), zip(
             request.form.getlist('budget_goals_label'),
-            request.form.getlist('budget_goals_amount', float)))
+            request.form.getlist('budget_goals_amount', optional_float_cast)))
         categories = map(lambda a: Category(*a), zip(
             request.form.getlist('categories_name'),
             request.form.getlist('categories_color', color_cast),
             request.form.getlist('categories_keywords', keywords_cast),
-            request.form.getlist('categories_warning_threshold', warning_threshold_cast)))
+            request.form.getlist('categories_warning_threshold', optional_float_cast)))
 
         config.update(
           income_sources=map(lambda s: s.to_dict(), income_sources),

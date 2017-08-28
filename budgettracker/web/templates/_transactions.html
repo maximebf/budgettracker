@@ -2,6 +2,7 @@
   <li data-tx-id="{{tx.id}}" data-tx-amount="{{tx.amount}}" data-tx-date="tx.date.isoformat()">
     <span class="date">{{tx.date.strftime('%d %b')}}</span>
     <span class="label" title="{{tx.label}}">{{tx.label}}</span>
+    {% if tx.amount < 0 %}
     {% if tx.goal %}
       <span class="goal" title="{{tx.goal}}" onclick="showTransactionOptions(event)">&#9733;</span>
     {% endif %}
@@ -12,6 +13,7 @@
       {% endfor %}
     {% else %}
       <span class="category" onclick="showTransactionOptions(event)"></span>
+    {% endif %}
     {% endif %}
     <span class="amount {{ 'warn' if is_planned else ('pos' if tx.amount >= 0 else 'neg') }}">{{famount(tx.amount)}}</span>
   </li>
