@@ -22,7 +22,13 @@
         {% endblock %}
         {% block page %}{% endblock %}
       </div>
-      {% block footer %}{% endblock %}
+      {% block footer %}
+        <div id="footer">
+          <a href="{{url_for('settings')}}">settings</a> -
+          <a href="{{url_for('logout')}}">logout</a>
+        </div>
+      {% endblock %}
     {% endblock %}
+    <script src="{{url_for('static', filename='main.js')}}?{{config['ASSETS_HASH']}}"></script>
   </body>
 </html>

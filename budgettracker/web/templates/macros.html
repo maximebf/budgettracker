@@ -19,16 +19,20 @@
   </li>
 {%- endmacro %}
 
-<ul class="transactions">
-  {% for tx in budget.transactions[:10] %}
-    {{ transaction(tx, tx in budget.planned_expenses_transactions) }}
-  {% endfor %}
-</ul>
-{% if budget.transactions|length > 10 %}
-<a id="show-more" href="javascript:" onclick="showAllTransactions()">more</a>
-<ul class="transactions hidden">
-  {% for tx in budget.transactions[10:] %}
-    {{ transaction(tx, tx in budget.planned_expenses_transactions) }}
-  {% endfor %}
-</ul>
-{% endif %}
+{% macro goal_bar(goal) -%}
+  <div class="goal-bar {{'success' if not goal.remaining else ''}}">
+    {% if goal.used %}
+    <span class="used" title="Used ({{famount(goal.used)}}) ({{goal.used_pct}}%)"
+      style="flex-basis: {{goal.used_pct}}%"></span>
+    {% endif %}
+    {% if goal.remaining %}
+    {% if goal.saved %}
+    <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"
+      style="flex-basis: {{goal.saved_pct}}%"></span>
+    {% endif %}
+    <span class="remaining" title="Remaining ({{famount(goal.remaining)}}) ({{goal.remaining_pct}}%)"></span>
+    {% else %}
+    <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"></span>
+    {% endif %}
+  </div>
+{%- endmacro %}

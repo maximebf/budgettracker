@@ -1,274 +1,26 @@
+{% from 'macros.html' import transaction with context %}
 {% extends "layout.html" %}
 {% block title %}{{date.strftime('%B %Y')}}{% endblock %}
-{% block head %}
-  <script>
-    function toggleAccounts() {
-      document.querySelector('#accounts').classList.toggle('open');
-    }
-
-    function showAllTransactions() {
-      var showMore = document.querySelector('#show-more');
-      if (showMore) {
-        showMore.remove();
-        document.querySelector('.transactions.hidden').classList.remove('hidden');
-      }
-    }
-
-    function uploadFile() {
-      document.querySelector('#update-form > input[type="file"]').click();
-    }
-
-    function submitUpdate(files) {
-      if (files.length) {
-        document.querySelector('#update-form').submit();
-      }
-    }
-
-    function transactionNodeToObject(node) {
-      var obj = {
-        id: node.dataset.txId,
-        date: new Date(node.dataset.txDate),
-        label: node.querySelector('.label').innerText,
-        amount: node.dataset.txAmount,
-        amount_text: node.querySelector('.amount').innerText,
-        categories: [],
-        goal: null
-      };
-      node.querySelectorAll('.category').forEach(function(node) {
-        if (node.innerText) {
-          obj.categories.push(node.innerText);
-        }
-      });
-      var goalNode = node.querySelector('.goal');
-      if (goalNode) {
-        obj.goal = goalNode.getAttribute('title');
-      }
-      return obj;
-    }
-
-    var selectedTransactionNode;
-
-    function showTransactionOptions(event) {
-      event.stopPropagation();
-      event.preventDefault();
-      var form = document.querySelector('#transaction-options form');
-
-      selectedTransactionNode = event.target.parentNode
-      var tx = transactionNodeToObject(selectedTransactionNode);
-      form.action = form.dataset.actionBase + '/' + tx.id;
-      form.querySelector('h4').innerText = tx.label + ' (' + tx.amount_text + ')';
-      form.querySelectorAll('input[name="categories"]').forEach(function(node) {
-        node.checked = tx.categories.indexOf(node.value) !== -1;
-      });
-      form.querySelectorAll('input[name="goal"]').forEach(function(node) {
-        node.checked = (!tx.goal && node.value === '') || (tx.goal && node.value === tx.goal);
-      });
-
-      document.querySelectorAll('#transaction-options label.category.new').forEach(function(node) {
-        node.parentNode.removeChild(node);
-      });
-      document.querySelector('#transaction-options').classList.add('visible');
-    }
-
-    function addCategory(before) {
-      var name = prompt('Name:');
-      if (!name) {
-        return;
-      }
-      var label = document.createElement('label');
-      label.classList.add('category');
-      label.classList.add('new');
-      var check = document.createElement('input');
-      check.setAttribute('type', 'checkbox');
-      check.setAttribute('name', 'categories');
-      check.checked = true;
-      check.value = name;
-      label.appendChild(check);
-      label.appendChild(document.createTextNode(name));
-      before.parentNode.insertBefore(label, before);
-    }
-
-    function onTransactionOptionsFormSubmit(event) {
-      event.stopPropagation();
-      event.preventDefault();
-      var form = document.querySelector('#transaction-options form');
-
-      var req = new XMLHttpRequest();
-      req.responseType = 'json';
-      req.addEventListener("load", function() {
-        selectedTransactionNode.querySelectorAll('.category').forEach(function(node) {
-          node.parentNode.removeChild(node);
-        });
-        var goalNode = selectedTransactionNode.querySelector('.goal');
-        if (goalNode) {
-          goalNode.parentNode.removeChild(goalNode);
-        }
-        var before = selectedTransactionNode.querySelector('.amount');
-        form.querySelectorAll('input[name="goal"]').forEach(function(node) {
-          if (node.checked && node.value) {
-            var span = document.createElement('span');
-            span.title = node.value;
-            span.innerHTML = '&#9733;';
-            span.classList.add('goal');
-            span.onclick = showTransactionOptions;
-            selectedTransactionNode.insertBefore(span, before);
-          }
-        });
-        var hasCategory = false;
-        form.querySelectorAll('input[name="categories"]').forEach(function(node) {
-          if (node.checked) {
-            var span = document.createElement('span');
-            span.title = node.value;
-            span.innerText = node.value;
-            span.classList.add('category');
-            span.onclick = showTransactionOptions;
-            span.setAttribute("style", node.parentNode.getAttribute("style"));
-            selectedTransactionNode.insertBefore(span, before);
-            hasCategory = true;
-          }
-        });
-        if (!hasCategory) {
-          var span = document.createElement('span');
-          span.classList.add('category');
-          span.onclick = showTransactionOptions;
-          selectedTransactionNode.insertBefore(span, before);
-        }
-        document.querySelectorAll('#transaction-options label.category.new').forEach(function(node) {
-          node.classList.remove('new');
-        });
-        hideTransactionOptions();
-      });
-      req.open("POST", form.action);
-      req.send(new FormData(form));
-    }
-
-    function hideTransactionOptions() {
-      document.querySelector('#transaction-options').classList.remove('visible');
-    }
-
-    function filterTransactions(category, title) {
-      showAllTransactions();
-      document.querySelectorAll('ul.transactions li').forEach(function(node) {
-        var tx = transactionNodeToObject(node);
-        if ((category && tx.categories.indexOf(category) === -1) || (!category && tx.categories.length)) {
-          node.classList.add('hide');
-        } else {
-          node.classList.remove('hide');
-        }
-      });
-
-      var title = document.querySelector('#category-title');
-      title.innerText = document.querySelector('#categories-bar > span[data-name="'
-        + (category || 'Uncategorized') + '"]').getAttribute('title');
-      title.style.display = 'block';
-      document.querySelector('#clear-filter').style.display = 'block';
-    }
-
-    function clearTransactionsFilter() {
-      document.querySelectorAll('ul.transactions li').forEach(function(node) {
-        node.classList.remove('hide');
-      });
-      document.querySelector('#category-title').style.display = 'none';
-      document.querySelector('#clear-filter').style.display = 'none';
-    }
-
-    function toggleYearOverview() {
-      var header = document.querySelector('#header');
-      var overview = document.querySelector('#year-overview');
-      if (overview.style.display == 'flex') {
-        header.style.borderBottomWidth = '9px';
-        overview.style.display = 'none';
-      } else {
-        header.style.borderBottomWidth = 0;
-        overview.style.display = 'flex';
-      }
-    }
-  </script>
-{% endblock %}
 
 {% block page_header %}
-  <div id="accounts" onclick="toggleAccounts()">
-    <div class="balance">
-      {{famount(account_balance - budgets.undetected_planned_expenses)}}
-      ({{famount(account_balance or 0)}})
-    </div>
-    <div class="remaining-planned">
-      Remaining planned expenses: {{famount(budgets.undetected_planned_expenses)}}<br>
-    </div>
-    <table>
-      <tr>
-        <th colspan="2">Accounts</th>
-      </tr>
-      {% for acc in accounts %}
-      <tr>
-        <td width="80%">{{acc.title}}</td>
-        <td>{{famount(acc.amount)}}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    {% if budget_goals %}
-    <table>
-      <tr>
-        <th colspan="2">Budget goals</th>
-      </tr>
-      {% for goal in budget_goals %}
-      <tr>
-        <td>{{goal.label}}{% if goal.target %} ({{famount(goal.target)}}){% endif %}</td>
-        <td width="150">
-          {% if goal.target %}
-          <div class="goal-bar {{'success' if not goal.remaining else ''}}">
-            {% if goal.used %}
-            <span class="used" title="Used ({{famount(goal.used)}}) ({{goal.used_pct}}%)"
-              style="flex-basis: {{goal.used_pct}}%"></span>
-            {% endif %}
-            {% if goal.remaining %}
-            {% if goal.saved %}
-            <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"
-              style="flex-basis: {{goal.saved_pct}}%"></span>
-            {% endif %}
-            <span class="remaining" title="Remaining ({{famount(goal.remaining)}}) ({{goal.remaining_pct}}%)"></span>
-            {% else %}
-            <span class="saved" title="Saved ({{famount(goal.saved)}}) ({{goal.saved_pct}}%)"></span>
-            {% endif %}
-          </div>
-          {% else %}
-          {{famount(goal.used)}}
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-    {% endif %}
-    <div class="yearly-savings">
-      Savings this year: {{famount(budgets.savings)}}
-      {% if budget.savings_goal %} / {{famount(budgets.savings_goal)}}
-      ({{famount(budgets.savings_balance)}}){% endif %}<br>
-      <small>Available savings after goals: {{famount(savings_after_goals)}}</small>
-      {% if budgets.adjusted_savings_goal > budget.savings_goal %}
-      <br><small>Adjusted savings goal: {{famount(budgets.adjusted_savings_goal)}}</small>
-      {% endif %}
-    </div>
-  </div>
+  {% include "_year_overview.html" %}
   <div id="header">
-    <a href="/{{prev_date.year}}-{{prev_date.month}}" title="Previous month">&laquo;</a>
-    <h1 id="month" onclick="toggleYearOverview()">{{date.strftime('%B %Y')}}</h1>
+    <a href="{{url_for('index', year=prev_date.year, month=prev_date.month)}}" title="Previous month">&laquo;</a>
+    <h1>
+      <a href="javascript:" onclick="toggleMonthSwitcher()">{{date.strftime('%B')}}</a>
+      <a href="{{url_for('year', year=date.year)}}">{{date.year}}</a>
+    </h1>
     <form action="{{url_for('update', year=date.year, month=date.month)}}" method="POST" enctype="multipart/form-data" id="update-form">
       {% if bank_adapter.fetch_type == 'file' %}<input type="file" name="file" onchange="submitUpdate(this.files)">{% endif %}
       <button type="{{ 'submit' if bank_adapter.fetch_type == 'web' else 'button' }}" title="Update data ({{bank_adapter.name}})"
         {% if bank_adapter.fetch_type == 'file' %}onclick="uploadFile()"{% endif %}>&#8635;</button>
     </form>
     {% if next_date %}
-      <a href="/{{next_date.year}}-{{next_date.month}}" title="Next month">&raquo;</a>
+      <a href="{{url_for('index', year=next_date.year, month=next_date.month)}}" title="Next month">&raquo;</a>
     {% endif %}
   </div>
-  <div id="year-overview">
-    {% for month, label in months %}
-      <a class="{% if budgets|length - 2 >= month and budgets[month].transactions|length > 0 %}{{ 'neg' if budgets[month].savings <= 0 else ('warn' if budgets[month].savings < budgets[month].savings_goal else 'pos') }}{% elif budgets|length - 1 == month %}current{% endif %}" href="{{url_for('index', year=date.year, month=month + 1) if budgets|length - 1 >= month else 'javascript:'}}"
-        title="{% if budgets|length - 2 >= month %}{{famount(budgets[month].savings, True)}}{% endif %}">
-        {{label}}
-      </a>
-    {% endfor %}
-  </div>
+  {% set hide_month_switcher = true %}
+  {% include "_month_switcher.html" %}
 {% endblock %}
 
 {% block page %}
@@ -276,21 +28,26 @@
     {% include "_budget.html" %}
     {% if budget.transactions %}
     {% if categories %}
-      <div id="categories-bar">
-        {% for category in categories %}
-          {% if category.amount > 0 %}
-          <span title="{% if category.has_warning %}&#9888; {% endif %}{{category.name or 'Uncategorized'}}: {{famount(category.amount)}}{% if category.warning_threshold %} / {{famount(category.warning_threshold)}}{% endif %} ({{category.pct}}%)"
-            style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"
-            data-name="{{category.name or 'Uncategorized'}}" data-amount="{{category.amount}}"
-            onclick="filterTransactions({{ ("'" + category.name + "'") if category.name else ''}})"></span>
-          {% endif %}
-        {% endfor %}
-      </div>
-      <h2 id="category-title"></h2>
+      {% include "_categories_bar.html" %}
     {% else %}
       <hr>
     {% endif %}
-    {% include "_transactions.html" %}
+    <h2 id="filter-title"></h2>
+
+    <ul class="transactions">
+      {% for tx in budget.transactions[:10] %}
+        {{ transaction(tx, tx in budget.planned_expenses_transactions) }}
+      {% endfor %}
+    </ul>
+    {% if budget.transactions|length > 10 %}
+    <a id="show-more" href="javascript:" onclick="showAllTransactions()">more</a>
+    <ul class="transactions hidden">
+      {% for tx in budget.transactions[10:] %}
+        {{ transaction(tx, tx in budget.planned_expenses_transactions) }}
+      {% endfor %}
+    </ul>
+    {% endif %}
+
     <a id="clear-filter" href="javascript:" onclick="clearTransactionsFilter()">Clear filter</a>
     {% endif %}
   {% else %}
@@ -300,42 +57,11 @@
 
 {% block footer %}
   <div id="footer">
-    <a href="{{url_for('budget', year=date.year, month=date.month)}}">budget.json</a> -
-    <a href="{{url_for('transactions', year=date.year, month=date.month)}}">transactions.json</a> -
+    <a href="{{url_for('budget_json', year=date.year, month=date.month)}}">budget.json</a> -
+    <a href="{{url_for('transactions_json', year=date.year, month=date.month)}}">transactions.json</a> -
     <a href="{{url_for('transactions_csv', year=date.year, month=date.month)}}">transactions.csv</a> -
-    <a href="{{url_for('edit_config')}}">config</a> -
+    <a href="{{url_for('settings')}}">settings</a> -
     <a href="{{url_for('logout')}}">logout</a>
   </div>
-  <div id="transaction-options">
-    <div class="backdrop" onclick="hideTransactionOptions()"></div>
-    <form method="post" data-action-base="{{url_for('index', year=date.year, month=date.month)}}"
-        onsubmit="onTransactionOptionsFormSubmit(event)">
-      <h4></h4>
-      <fieldset>
-        <legend>Categories:</legend>
-        {% for category in categories %}
-          {% if category.name %}
-            <label class="category" style="background-color: {{category.color or '#eee'}}">
-              <input type="checkbox" name="categories" value="{{category.name}}">{{category.name}}
-            </label>
-          {% endif %}
-        {% endfor %}
-        <a href="javascript:" onclick="addCategory(this)">Add category</a>
-      </fieldset>
-      <fieldset>
-        <legend>Budget goal:</legend>
-        <label class="goal">
-          <input type="radio" name="goal" value=""> None
-        </label>
-        {% for goal in budget_goals %}
-          <label class="goal">
-            <input type="radio" name="goal" value="{{goal.label}}">
-            {{goal.label}}
-          </label>
-        {% endfor %}
-      </fieldset>
-      <button type="sumit">Save</button>
-      <button type="button" onclick="hideTransactionOptions()">Cancel</button>
-    </form>
-  </div>
+  {% include "_tx_options.html" %}
 {% endblock %}

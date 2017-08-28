@@ -3,8 +3,9 @@ from werkzeug.utils import secure_filename
 from monthdelta import monthdelta
 from tempfile import NamedTemporaryFile
 import datetime, functools, json, unicodecsv, StringIO, os, uuid
+from ..data import sort_transactions
 from ..budget import IncomeSource, PlannedExpense, BudgetGoal
-from ..categories import Category
+from ..categories import Category, compute_categories
 from ..helpers import (load_config, save_config, get_storage_from_config, get_bank_adapter_from_config,
                        load_yearly_budgets_from_config, load_monthly_budget_from_config, update_local_data,
                        compute_yearly_budget_goals_from_config, compute_monthly_categories_from_config,
@@ -19,12 +20,28 @@ app.config['SECRET_KEY'] = config.get('web_passcode', 'budgettracker')
 app.config['ASSETS_HASH'] = str(uuid.uuid4()).split('-')[0]
 app.config.update(config.get('web_config', {}))
 
-months_labels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+months_labels = list(enumerate(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']))
+
+
+def value_class(value, warning_threshold=None, zero_as_neg=False):
+    if warning_threshold is not None:
+        if value > 0 and value < warning_threshold:
+            return 'warn'
+    if zero_as_neg and value == 0:
+        return 'neg'
+    return 'neg' if value < 0 else 'pos'
 
 
 @app.context_processor
 def utility_processor():
-    return dict(famount=create_amount_formatter(config))
+    return dict(
+        famount=create_amount_formatter(config),
+        max=max,
+        current_month=datetime.date.today().replace(day=1),
+        value_class=value_class,
+        config_categories=map(Category.from_dict, config.get('categories', [])),
+        config_budget_goals=map(BudgetGoal.from_dict, config.get('budget_goals', []))
+    )
 
 
 def requires_passcode(func):
@@ -56,7 +73,7 @@ def logout():
 
 
 @app.route('/')
-@app.route('/<int:year>-<int:month>')
+@app.route('/<int:year>/<int:month>')
 @requires_passcode
 def index(year=None, month=None):
     current = datetime.date.today().replace(day=1)
@@ -67,10 +84,8 @@ def index(year=None, month=None):
 
     accounts = storage.load_accounts()
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
-    budget_goals, savings_after_goals = compute_yearly_budget_goals_from_config(config, date, storage=storage)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
     category_colors = {c.name: c.color for c in categories}
-    months = [(i, label) for i, label in enumerate(months_labels)]
 
     return render_template('index.html',
         date=date,
@@ -80,32 +95,128 @@ def index(year=None, month=None):
         account_balance=sum([a.amount for a in accounts]),
         budgets=budgets,
         budget=budgets.get_from_date(date),
-        max=max,
         bank_adapter=bank_adapter,
         categories=categories,
         category_colors=category_colors,
+        months=months_labels)
+
+
+@app.route('/<int:year>')
+def year(year):
+    current = datetime.date.today().replace(day=1)
+    date = datetime.date(year, 1, 1)
+    accounts = storage.load_accounts()
+    budgets = load_yearly_budgets_from_config(config, date, storage=storage)
+
+    budget_goals, savings_after_goals = compute_yearly_budget_goals_from_config(
+        config, date, storage=storage)
+
+    categories = compute_categories(budgets.transactions,
+        map(Category.from_dict, config.get('categories', [])),
+        warning_threshold_multiplier=12)
+
+    return render_template('year.html',
+        date=date,
+        prev_year=(year - 1),
+        next_year=(year + 1) if year < current.year else None,
+        accounts=accounts,
+        account_balance=sum([a.amount for a in accounts]),
+        budgets=budgets,
         budget_goals=budget_goals,
         savings_after_goals=savings_after_goals,
-        months=months)
+        categories=categories,
+        category_colors={c.name: c.color for c in categories},
+        months=months_labels,
+        chart_months=[l for i, l in months_labels],
+        chart_incomes=[(b.income if b.month < current else b.expected_income) for b in budgets],
+        chart_all_expenses=[-b.expenses-b.expected_planned_expenses for b in budgets],
+        chart_expenses=[-b.expenses for b in budgets],
+        chart_savings=[(b.savings if b.month < current else b.expected_savings) for b in budgets]
+    )
 
 
-@app.route('/<int:year>-<int:month>/budget.json')
+@app.route('/<int:year>/categories/<name>')
+def category(year, name):
+    current = datetime.date.today().replace(day=1)
+    date = datetime.date(year, 1, 1)
+    name = name.lower()
+
+    transactions = storage.load_yearly_transactions(date)
+    categories = compute_categories(transactions,
+        map(Category.from_dict, config.get('categories', [])),
+        warning_threshold_multiplier=12)
+
+    transactions = sort_transactions(filter(
+        lambda tx: (tx.categories and name in [c.lower() for c in tx.categories]) or (name == 'uncategorized' and not tx.categories), transactions))
+
+    chart_amounts = [0] * 12
+    for tx in transactions:
+        chart_amounts[tx.date.month - 1] += abs(tx.amount)
+
+    nb_months = 12 if date.year < current.year else current.month
+    monthly_average = sum(chart_amounts) / nb_months
+
+    category = [c for c in categories if (c.name and c.name.lower() == name) or (not c.name and name == 'uncategorized')]
+    if not category:
+        abort(404)
+
+    return render_template('category.html',
+        date=date,
+        prev_year=(year - 1),
+        next_year=(year + 1) if year < current.year else None,
+        transactions=transactions,
+        category=category[0],
+        category_colors={category[0].name: category[0].color},
+        chart_months=[l for i, l in months_labels],
+        chart_amounts=chart_amounts,
+        monthly_average=monthly_average
+    )
+
+
+@app.route('/<int:year>/goals/<label>')
+def goal(year, label):
+    current = datetime.date.today().replace(day=1)
+    date = datetime.date(year, 1, 1)
+    label = label.lower()
+
+    budgets = load_yearly_budgets_from_config(config, date, storage=storage)
+
+    budget_goals, savings_after_goals = compute_yearly_budget_goals_from_config(
+        config, date, storage=storage)
+
+    goal = [g for g in budget_goals if g.label.lower() == label]
+    if not goal:
+        abort(404)
+
+    transactions = sort_transactions(filter(
+        lambda tx: tx.goal and tx.goal.lower() == label, budgets.transactions))
+
+    return render_template('goal.html',
+        date=date,
+        prev_year=(year - 1),
+        next_year=(year + 1) if year < current.year else None,
+        goal=goal[0],
+        transactions=transactions
+    )
+
+
+@app.route('/<int:year>/<int:month>/budget.json')
 @requires_passcode
-def budget(year, month):
+def budget_json(year, month):
     date = datetime.date(year, month, 1)
     budget = load_monthly_budget_from_config(config, date, storage=storage)
     return jsonify(**budget.to_dict(with_transactions=False))
 
 
-@app.route('/<int:year>-<int:month>/transactions.json')
+@app.route('/<int:year>/<int:month>/transactions.json')
 @requires_passcode
-def transactions(year, month):
+def transactions_json(year, month):
     date = datetime.date(year, month, 1)
     budget = load_monthly_budget_from_config(config, date, storage=storage)
     return jsonify(map(lambda tx: tx.to_dict(), budget.transactions))
 
 
-@app.route('/<int:year>-<int:month>/transactions.csv')
+@app.route('/<int:year>/<int:month>/transactions.csv')
 @requires_passcode
 def transactions_csv(year, month):
     date = datetime.date(year, month, 1)
@@ -118,7 +229,7 @@ def transactions_csv(year, month):
                  "Content-Type": "text/csv"}
 
 
-@app.route('/<int:year>-<int:month>/<transaction_id>', methods=['POST'])
+@app.route('/<int:year>/<int:month>/<transaction_id>', methods=['POST'])
 def update_transaction(year, month, transaction_id):
     date = datetime.date(year, month, 1)
     categories = request.form.getlist('categories')
@@ -139,7 +250,7 @@ def update_transaction(year, month, transaction_id):
     return ''
 
 
-@app.route('/<int:year>-<int:month>', methods=['POST'])
+@app.route('/<int:year>/<int:month>', methods=['POST'])
 @requires_passcode
 def update(year, month):
     date = datetime.date(year, month, 1)
@@ -166,9 +277,9 @@ def update(year, month):
     return redirect(url_for('index', year=year, month=month))
 
 
-@app.route('/config', methods=['GET', 'POST'])
+@app.route('/settings', methods=['GET', 'POST'])
 @requires_passcode
-def edit_config():
+def settings():
     global config
     if request.method == 'POST':
         date_cast = lambda d: datetime.datetime.strptime(d, '%Y-%m-%d').date() if d else ''
@@ -207,7 +318,7 @@ def edit_config():
         rematch_categories(config, storage)
         return redirect(url_for('index'))
 
-    return render_template('config.html',
+    return render_template('settings.html',
         config=config,
         income_sources=map(IncomeSource.from_dict, config.get('income_sources', [])),
         planned_expenses=map(PlannedExpense.from_dict, config.get('planned_expenses', [])),

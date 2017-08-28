@@ -1,0 +1,8 @@
+<div id="month-switcher">
+{% for month, label in months %}
+  <a class="{% if budgets|length - 2 >= month and budgets[month].transactions|length > 0 %}{{ 'neg' if budgets[month].savings <= 0 else ('warn' if budgets[month].savings < budgets[month].savings_goal else 'pos') }}{% elif budgets|length - 1 == month %}current{% endif %}" href="{{url_for('index', year=date.year, month=month + 1) if budgets|length - 1 >= month else 'javascript:'}}"
+    title="{% if budgets|length - 2 >= month %}{{famount(budgets[month].savings, True)}}{% endif %}">
+    {{label}}
+  </a>
+{% endfor %}
+</div>

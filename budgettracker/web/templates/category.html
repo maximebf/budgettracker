@@ -1,0 +1,71 @@
+{% from 'macros.html' import transaction with context %}
+{% extends "layout.html" %}
+{% block title %}{{category.name or 'Uncategorized'}} in {{date.year}}{% endblock %}
+{% block head %}
+  <script src="{{url_for('static', filename='chartist.min.js')}}"></script>
+  <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='chartist.min.css')}}">
+{% endblock %}
+
+{% block page_header %}
+  <div id="header">
+    <a href="{{url_for('category', year=prev_year, name=category.name.lower() if category.name else 'uncategorized')}}" title="Previous year">&laquo;</a>
+    <h1>{{ category.name or 'Uncategorized' }} in <a href="{{url_for('year', year=date.year)}}" class="u">{{date.year}}</a></h1>
+    {% if next_year %}
+    <a href="{{url_for('category', year=next_year, name=category.name.lower() if category.name else 'uncategorized')}}" title="Next year">&raquo;</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block page %}
+  <div class="budget">
+    <div class="header">
+      <div class="value">
+        {{famount(category.amount)}}
+        {% if category.has_warning %}&#9888;{% endif %}
+      </div>
+    </div>
+    <p>
+      <label>Monthly average</label>
+      <span class="value">{{famount(monthly_average)}}</span>
+    </p>
+    {% if category.warning_threshold %}
+    <p>
+      <label>Warning threshold</label>
+      <span class="value">{{famount(category.warning_threshold)}}</span>
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="ct-chart ct-major-eleventh"></div>
+
+  <ul class="transactions">
+    {% for tx in transactions %}
+      {{ transaction(tx) }}
+    {% endfor %}
+  </ul>
+
+  <script>
+     document.addEventListener("DOMContentLoaded", function() {
+      var data = {
+        labels: {{chart_months|tojson}},
+        series: [ {{chart_amounts|tojson}} ]
+      };
+
+      new Chartist.Line('.ct-chart', data, {
+        fullWidth: true,
+        showArea: true,
+        axisX: {
+          showGrid: false
+        },
+        axisY: {
+          showLabel: false,
+          offset: 0
+        }
+      });
+    });
+  </script>
+
+  {% include "_tx_options.html" %}
+{% endblock %}

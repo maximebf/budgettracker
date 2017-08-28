@@ -1,0 +1,10 @@
+<div id="categories-bar">
+  {% for category in categories %}
+    {% if category.amount > 0 %}
+    <span title="{% if category.has_warning %}&#9888; {% endif %}{{category.name or 'Uncategorized'}}: {{famount(category.amount)}}{% if category.warning_threshold %} / {{famount(category.warning_threshold)}}{% endif %} ({{category.pct}}%)"
+      style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"
+      data-name="{{category.name or 'Uncategorized'}}" data-amount="{{category.amount}}"
+      onclick="filterTransactions({category: {{ ("'" + category.name + "'") if category.name else ''}} })"></span>
+    {% endif %}
+  {% endfor %}
+</div>

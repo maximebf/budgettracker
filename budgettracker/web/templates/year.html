@@ -1,0 +1,173 @@
+{% from 'macros.html' import goal_bar with context %}
+{% extends "layout.html" %}
+{% block title %}{{date.year}}{% endblock %}
+{% block head %}
+  <script src="{{url_for('static', filename='chartist.min.js')}}"></script>
+  <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='chartist.min.css')}}">
+{% endblock %}
+
+{% block page_header %}
+  {% include "_year_overview.html" %}
+  <div id="header">
+    <a href="{{url_for('year', year=prev_year)}}" title="Previous year">&laquo;</a>
+    <h1><a href="javascript:" onclick="toggleMonthSwitcher()">{{date.year}}</a></h1>
+    {% if next_year %}
+      <a href="{{url_for('year', year=next_year)}}" title="Next year">&raquo;</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+  </div>
+  {% include "_month_switcher.html" %}
+{% endblock %}
+
+{% block page %}
+  <div class="budget">
+    <div class="header">
+      <div class="title">
+        Savings
+        {% if not next_year %}
+        <br><small>(after remaining planned expenses)</small>
+        {% endif %}
+      </div>
+      {% if not next_year %}
+      <div class="value {{ value_class(budgets.savings) }}">{{famount(budgets.savings, True)}}</div>
+      {% else %}
+      <div class="value {{ value_class(budgets.real_balance) }}">{{famount(budgets.real_balance, True)}}</div>
+      {% endif %}
+    </div>
+    <p class="big">
+      <label>Budget balance</label>
+      <span class="value {{ value_class(budgets.savings_balance) }}">
+        {{famount(budgets.savings_balance, True)}}
+      </span>
+    </p>
+    <p class="{% if not next_year %}big{% endif %}">
+      <label>
+        {% if next_year %}Undetected{% else %}Remaining{% endif %} planned expenses
+        <span class="tooltip">?<span>Delta between expected planned expenses and detected ones</span></span>
+      </label>
+      <span class="value {{ ('neg' if not next_year else 'warn') if budgets.undetected_planned_expenses > 0 else 'pos' }}">{{famount(budgets.undetected_planned_expenses)}}</span>
+    </p>
+    <p>
+      <label>Available savings after goals</label>
+      <span class="value {{ value_class(savings_after_goals, zero_as_neg=True) }}">{{famount(savings_after_goals)}}</span>
+    </p>
+    <p>
+      <label>Income</label>
+      <span class="value {{ value_class(budgets.income) }}">{{famount(budgets.income)}}</span>
+    </p>
+    <p>
+      <label>Planned expenses</label>
+      <span class="value warn">{{famount(budgets.planned_expenses)}}</span>
+    </p>
+    <p>
+      <label>Expenses</label>
+      <span class="value neg">{{famount(budgets.expenses)}}</span>
+    </p>
+    {% if not next_year %}
+    <p>
+      <label>
+        Real balance
+        <span class="tooltip">?<span>May not match the sum of previous numbers are some calculations use expected amounts</span></span>
+      </label>
+      <span class="value {{ value_class(budgets.real_balance) }}">
+        {{famount(budgets.real_balance, True)}}
+      </span>
+    </p>
+    {% endif %}
+  </div>
+
+  <div id="months" class="ct-chart ct-major-eleventh"></div>
+
+  {% if budget_goals %}
+    <table id="goals" class="data-table">
+      <thead>
+        <tr>
+          <th colspan="2">Budget goals</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for goal in budget_goals %}
+        <tr onclick="filterTransactions({goal: '{{goal.label}}'})">
+          <td>
+            <a href="{{url_for('goal', year=date.year, label=goal.label)}}">
+              {{goal.label}}{% if goal.target %} ({{famount(goal.target)}}){% endif %}
+            </a>
+          </td>
+          <td width="200">
+            {% if goal.target %}
+              {{ goal_bar(goal) }}
+            {% else %}
+              {{famount(goal.used)}}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if categories %}
+    <table id="categories" class="data-table">
+      <thead>
+        <tr>
+          <th colspan="2">Categories</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for category in categories %}
+        <tr>
+          <td>
+            <span class="color" style="background-color: {{category.color or '#eee'}}"></span>
+            <a href="{{url_for('category', year=date.year, name=category.name.lower() if category.name else 'uncategorized')}}">
+              {{category.name or 'Uncategorized'}}
+              {% if category.has_warning %}&#9888;{% endif %}
+            </a>
+          </td>
+          <td>
+            {{famount(category.amount)}}
+            {% if category.warning_threshold %} / {{famount(category.warning_threshold)}}{% endif %} 
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% include "_categories_bar.html" %}
+  {% endif %}
+
+  <script>
+     document.addEventListener("DOMContentLoaded", function() {
+      var data = {
+        labels: {{chart_months|tojson}},
+        series: [
+          {name: 'income', data: {{chart_incomes|tojson}} },
+          {name: 'all_expenses', data: {{chart_all_expenses|tojson}} },
+          {name: 'expenses', data: {{chart_expenses|tojson}} },
+          {name: 'savings', data: {{chart_savings|tojson}} }
+        ]
+      };
+
+      new Chartist.Line('#months', data, {
+        fullWidth: true,
+        showLine: false,
+        showPoint: false,
+        showArea: true,
+        axisX: {
+          showGrid: false
+        },
+        axisY: {
+          showLabel: false,
+          offset: 0
+        },
+        series: {
+          'savings': {
+            showLine: true,
+            showPoint: true,
+            showArea: false
+          }
+        }
+      });
+    });
+  </script>
+
+{% endblock %}

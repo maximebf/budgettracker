@@ -1,13 +1,18 @@
 {% extends "layout.html" %}
-{% block title %}Config{% endblock %}
+{% block title %}Settings{% endblock %}
 {% block head %}
   <script src="{{url_for('static', filename='jscolor.min.js')}}"></script>
 {% endblock %}
 {% block page %}
   <form id="config" action="" method="POST">
-    <fieldset>
-      <legend>Income Sources</legend>
-      <table id="income_sources">
+    <ul class="tabs">
+      <li class="active"><a href="#income-sources">Income sources</a></li>
+      <li><a href="#planned-expenses">Planned expenses</a></li>
+      <li><a href="#budget-goals">Budget goals</a></li>
+      <li><a href="#categories">Categories</a></li>
+    </ul>
+    <fieldset id="income-sources" class="active tab-panel">
+      <table>
         <thead>
           <tr>
             <th>Label</th>
@@ -31,7 +36,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <template id="income_sources_row">
+      <template>
         <tr>
           <td><input type="text" value="" name="income_sources_label" required></td>
           <td><input type="number" value="" name="income_sources_amount" required step="any"></td>
@@ -41,11 +46,10 @@
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
-      <button type="button" onclick="addTemplateRow('income_sources')">&oplus; Add</button>
+      <button type="button" onclick="addTemplateRow('income-sources')">&oplus; Add</button>
     </fieldset>
-    <fieldset>
-      <legend>Planned Expenses</legend>
-      <table id="planned_expenses">
+    <fieldset id="planned-expenses" class="tab-panel">
+      <table>
         <thead>
           <tr>
             <th>Label</th>
@@ -77,7 +81,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <template id="planned_expenses_row">
+      <template>
         <tr>
           <td><input type="text" value="" name="planned_expenses_label" required></td>
           <td><input type="number" value="" name="planned_expenses_amount" required></td>
@@ -94,11 +98,10 @@
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
-      <button type="button" onclick="addTemplateRow('planned_expenses')">&oplus; Add</button>
+      <button type="button" onclick="addTemplateRow('planned-expenses')">&oplus; Add</button>
     </fieldset>
-    <fieldset>
-      <legend>Budget Goals (per year)</legend>
-      <table id="budget_goals">
+    <fieldset id="budget-goals" class="tab-panel">
+      <table>
         <thead>
           <tr>
             <th>Label</th>
@@ -116,18 +119,17 @@
           {% endfor %}
         </tbody>
       </table>
-      <template id="budget_goals_row">
+      <template>
         <tr>
           <td><input type="text" value="" name="budget_goals_label" required></td>
           <td><input type="number" value="" name="budget_goals_amount"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>
-      <button type="button" onclick="addTemplateRow('budget_goals')">&oplus; Add</button>
+      <button type="button" onclick="addTemplateRow('budget-goals')">&oplus; Add</button>
     </fieldset>
-    <fieldset>
-      <legend>Categories</legend>
-      <table id="categories">
+    <fieldset id="categories" class="tab-panel">
+      <table>
         <thead>
           <tr>
             <th width="150">Name</th>
@@ -149,7 +151,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <template id="categories_row">
+      <template>
         <tr>
           <td><input type="text" value="" name="categories_name" required></td>
           <td><input type="text" class="jscolor" value="" name="categories_color"></td>
@@ -160,12 +162,13 @@
       </template>
       <button type="button" onclick="addTemplateRow('categories')">&oplus; Add</button>
     </fieldset>
+    <hr>
     <button type="submit">Save</button>
   </form>
   <script>
-    function addTemplateRow(tableId) {
-      var tpl = document.querySelector('#' + tableId + '_row');
-      var table = document.querySelector('#' + tableId + ' tbody');
+    function addTemplateRow(typeId) {
+      var tpl = document.querySelector('#' + typeId + ' > template');
+      var table = document.querySelector('#' + typeId + ' > table > tbody');
       table.appendChild(document.importNode(tpl.content, true));
       table.querySelectorAll('input.jscolor').forEach(function(node) {
         new jscolor(node);

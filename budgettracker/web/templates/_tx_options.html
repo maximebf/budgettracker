@@ -1,0 +1,32 @@
+<div id="transaction-options">
+  <div class="backdrop" onclick="hideTransactionOptions()"></div>
+  <form method="post" data-action-base="{{url_for('index', year=date.year, month=date.month)}}"
+      onsubmit="onTransactionOptionsFormSubmit(event)">
+    <h4></h4>
+    <fieldset>
+      <legend>Categories:</legend>
+      {% for category in config_categories %}
+        {% if category.name %}
+          <label class="category" style="background-color: {{category.color or '#eee'}}">
+            <input type="checkbox" name="categories" value="{{category.name}}">{{category.name}}
+          </label>
+        {% endif %}
+      {% endfor %}
+      <a href="javascript:" onclick="addCategory(this)">Add category</a>
+    </fieldset>
+    <fieldset>
+      <legend>Budget goal:</legend>
+      <label class="goal">
+        <input type="radio" name="goal" value=""> None
+      </label>
+      {% for goal in config_budget_goals %}
+        <label class="goal">
+          <input type="radio" name="goal" value="{{goal.label}}">
+          {{goal.label}}
+        </label>
+      {% endfor %}
+    </fieldset>
+    <button type="sumit">Save</button>
+    <button type="button" onclick="hideTransactionOptions()">Cancel</button>
+  </form>
+</div>

@@ -1,0 +1,49 @@
+{% from 'macros.html' import transaction, goal_bar with context %}
+{% extends "layout.html" %}
+{% block title %}{{goal.label}} in {{date.year}}{% endblock %}
+
+{% block page_header %}
+  <div id="header">
+    <a href="{{url_for('goal', year=prev_year, label=goal.label.lower())}}" title="Previous year">&laquo;</a>
+    <h1>{{ goal.label }} in <a href="{{url_for('year', year=date.year)}}" class="u">{{date.year}}</a></h1>
+    {% if next_year %}
+    <a href="{{url_for('goal', year=next_year, label=goal.label.lower())}}" title="Next year">&raquo;</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block page %}
+  <div class="budget">
+    <div class="header">
+      {{ goal_bar(goal) }}
+    </div>
+    <p>
+      <label>Target</label>
+      <span class="value">{{famount(goal.target)}}</span>
+    </p>
+    <p>
+      <label>Saved</label>
+      <span class="value">{{famount(goal.saved)}}</span>
+    </p>
+    <p>
+      <label>Used</label>
+      <span class="value">{{famount(goal.used)}}</span>
+    </p>
+    <p>
+      <label>Remaining</label>
+      <span class="value">{{famount(goal.remaining)}}</span>
+    </p>
+  </div>
+
+  <hr>
+
+  <ul class="transactions">
+    {% for tx in transactions %}
+      {{ transaction(tx) }}
+    {% endfor %}
+  </ul>
+
+  {% include "_tx_options.html" %}
+{% endblock %}

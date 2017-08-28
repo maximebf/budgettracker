@@ -21,8 +21,10 @@ class Category(namedtuple('Category', ['name', 'color', 'keywords', 'warning_thr
 class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'keywords', 'warning_threshold', 'amount', 'pct'])):
     @classmethod
     def from_category(cls, category, **kwargs):
+        warning_threshold_multiplier = kwargs.pop('warning_threshold_multiplier', 1)
+        warning_threshold = category.warning_threshold * warning_threshold_multiplier if category.warning_threshold else None
         return cls(name=category.name, color=category.color, keywords=category.keywords,
-            warning_threshold=category.warning_threshold, **kwargs)
+            warning_threshold=warning_threshold, **kwargs)
 
     @property
     def has_warning(self):
@@ -33,7 +35,7 @@ class ComputedCategory(namedtuple('ComputedCategory', ['name', 'color', 'keyword
             ' /!\ %s' % (famount(self.warning_threshold)) if self.has_warning else '')
 
 
-def compute_categories(transactions, categories=None, start_date=None, end_date=None):
+def compute_categories(transactions, categories=None, start_date=None, end_date=None, warning_threshold_multiplier=1):
     categories = {c.name: c for c in categories or []}
     amounts = {}
     total = 0
@@ -55,13 +57,15 @@ def compute_categories(transactions, categories=None, start_date=None, end_date=
     for name, amount in sorted(amounts.items(), key=lambda t: t[0]):
         pct = round(amount * 100 / total, 0)
         if name in categories:
-            final.append(ComputedCategory.from_category(categories[name], amount=amount, pct=pct))
+            final.append(ComputedCategory.from_category(categories[name], amount=amount, pct=pct,
+                warning_threshold_multiplier=warning_threshold_multiplier))
         else:
             final.append(ComputedCategory(name=name, color=None, keywords=[],
                 warning_threshold=None, amount=amount, pct=pct))
     for category in categories.values():
         if category.name not in amounts:
-            final.append(ComputedCategory.from_category(category, amount=0, pct=0))
+            final.append(ComputedCategory.from_category(category, amount=0, pct=0,
+                warning_threshold_multiplier=warning_threshold_multiplier))
     return final
 
 

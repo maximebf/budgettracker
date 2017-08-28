@@ -83,8 +83,16 @@ class BudgetList(list):
         return self._sum('balance')
     
     @property
+    def expected_income(self):
+        return self._sum('expected_income')
+    
+    @property
     def income(self):
         return self._sum('income')
+    
+    @property
+    def expected_planned_expenses(self):
+        return self._sum('expected_planned_expenses')
     
     @property
     def planned_expenses(self):
@@ -269,7 +277,7 @@ def compute_budget_goals(budgets, budget_goals, debug=False):
 
     if not budget_goals:
         _debug('No budget goals!')
-        return []
+        return [], 0
 
     used = {g.label: 0 for g in budget_goals}
     saved = dict(used)
