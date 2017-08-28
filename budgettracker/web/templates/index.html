@@ -6,6 +6,7 @@
   {% include "_year_overview.html" %}
   <div id="header">
     <a href="{{url_for('index', year=prev_date.year, month=prev_date.month)}}" title="Previous month">&laquo;</a>
+    {% if next_date %}<span></span>{% endif %}
     <h1>
       <a href="javascript:" onclick="toggleMonthSwitcher()">{{date.strftime('%B')}}</a>
       <a href="{{url_for('year', year=date.year)}}">{{date.year}}</a>

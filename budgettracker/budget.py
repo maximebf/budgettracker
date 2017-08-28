@@ -54,7 +54,7 @@ class BudgetList(list):
         for budget in self:
             if budget.month == current and not key.startswith('expected_') and hasattr(budget, 'expected_%s' % key):
                 total += getattr(budget, 'expected_%s' % key)
-            elif budget.month < current:
+            elif budget.month < current or key.startswith('expected_'):
                 total += getattr(budget, key)
         return total
 

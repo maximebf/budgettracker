@@ -33,7 +33,7 @@
     {% if category.warning_threshold %}
     <p>
       <label>Warning threshold</label>
-      <span class="value">{{famount(category.warning_threshold)}}</span>
+      <span class="value">{{famount(category.warning_threshold / 12)}}</span>
     </p>
     {% endif %}
   </div>
@@ -50,7 +50,10 @@
      document.addEventListener("DOMContentLoaded", function() {
       var data = {
         labels: {{chart_months|tojson}},
-        series: [ {{chart_amounts|tojson}} ]
+        series: [
+          {name: 'amounts', data: {{chart_amounts|tojson}} }
+          {% if chart_warning %}, {name: 'warning', data: {{chart_warning|tojson}} } {% endif %}
+        ]
       };
 
       new Chartist.Line('.ct-chart', data, {
@@ -62,6 +65,12 @@
         axisY: {
           showLabel: false,
           offset: 0
+        },
+        series: {
+          warning: {
+            showArea: false,
+            showPoint: false
+          }
         }
       });
     });

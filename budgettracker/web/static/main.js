@@ -52,7 +52,7 @@ function showTransactionOptions(event) {
 
   selectedTransactionNode = event.target.parentNode
   var tx = transactionNodeToObject(selectedTransactionNode);
-  form.action = form.dataset.actionBase + '/' + tx.id;
+  form.action = form.dataset.actionBase + '/' + (tx.date.getMonth() + 1) + '/' + tx.id;
   form.querySelector('h4').innerText = tx.label + ' (' + tx.amount_text + ')';
   form.querySelectorAll('input[name="categories"]').forEach(function(node) {
     node.checked = tx.categories.indexOf(node.value) !== -1;

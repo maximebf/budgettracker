@@ -34,12 +34,14 @@ def value_class(value, warning_threshold=None, zero_as_neg=False):
 
 @app.context_processor
 def utility_processor():
+    categories = map(Category.from_dict, config.get('categories', []))
     return dict(
         famount=create_amount_formatter(config),
         max=max,
         current_month=datetime.date.today().replace(day=1),
         value_class=value_class,
-        config_categories=map(Category.from_dict, config.get('categories', [])),
+        config_categories=categories,
+        category_colors={c.name: c.color for c in categories},
         config_budget_goals=map(BudgetGoal.from_dict, config.get('budget_goals', []))
     )
 
@@ -85,8 +87,7 @@ def index(year=None, month=None):
     accounts = storage.load_accounts()
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
-    category_colors = {c.name: c.color for c in categories}
-
+    
     return render_template('index.html',
         date=date,
         prev_date=(date - monthdelta(1)),
@@ -97,7 +98,6 @@ def index(year=None, month=None):
         budget=budgets.get_from_date(date),
         bank_adapter=bank_adapter,
         categories=categories,
-        category_colors=category_colors,
         months=months_labels)
 
 
@@ -125,13 +125,35 @@ def year(year):
         budget_goals=budget_goals,
         savings_after_goals=savings_after_goals,
         categories=categories,
-        category_colors={c.name: c.color for c in categories},
         months=months_labels,
         chart_months=[l for i, l in months_labels],
         chart_incomes=[(b.income if b.month < current else b.expected_income) for b in budgets],
         chart_all_expenses=[-b.expenses-b.expected_planned_expenses for b in budgets],
         chart_expenses=[-b.expenses for b in budgets],
         chart_savings=[(b.savings if b.month < current else b.expected_savings) for b in budgets]
+    )
+
+
+@app.route('/<int:year>/income')
+def income(year):
+    current = datetime.date.today().replace(day=1)
+    date = datetime.date(year, 1, 1)
+
+    transactions = sort_transactions(filter(lambda tx: tx.amount > 0,
+        storage.load_yearly_transactions(date)))
+
+    chart_amounts = [0] * 12
+    for tx in transactions:
+        chart_amounts[tx.date.month - 1] += abs(tx.amount)
+
+    return render_template('income.html',
+        date=date,
+        prev_year=(year - 1),
+        next_year=(year + 1) if year < current.year else None,
+        income=sum(chart_amounts),
+        transactions=transactions,
+        chart_months=[l for i, l in months_labels],
+        chart_amounts=chart_amounts
     )
 
 
@@ -147,7 +169,7 @@ def category(year, name):
         warning_threshold_multiplier=12)
 
     transactions = sort_transactions(filter(
-        lambda tx: (tx.categories and name in [c.lower() for c in tx.categories]) or (name == 'uncategorized' and not tx.categories), transactions))
+        lambda tx: tx.amount < 0 and ((tx.categories and name in [c.lower() for c in tx.categories]) or (name == 'uncategorized' and not tx.categories)), transactions))
 
     chart_amounts = [0] * 12
     for tx in transactions:
@@ -166,9 +188,9 @@ def category(year, name):
         next_year=(year + 1) if year < current.year else None,
         transactions=transactions,
         category=category[0],
-        category_colors={category[0].name: category[0].color},
         chart_months=[l for i, l in months_labels],
         chart_amounts=chart_amounts,
+        chart_warning=[category[0].warning_threshold / 12]*12 if category[0].warning_threshold else None,
         monthly_average=monthly_average
     )
 
@@ -189,14 +211,25 @@ def goal(year, label):
         abort(404)
 
     transactions = sort_transactions(filter(
-        lambda tx: tx.goal and tx.goal.lower() == label, budgets.transactions))
+        lambda tx: tx.amount < 0 and tx.goal and tx.goal.lower() == label, budgets.transactions))
+
+    chart_amounts = [0] * 12
+    for tx in transactions:
+        chart_amounts[tx.date.month - 1] += abs(tx.amount)
+
+    categories = compute_categories(transactions,
+        map(Category.from_dict, config.get('categories', [])),
+        warning_threshold_multiplier=12)
 
     return render_template('goal.html',
         date=date,
         prev_year=(year - 1),
         next_year=(year + 1) if year < current.year else None,
         goal=goal[0],
-        transactions=transactions
+        transactions=transactions,
+        categories=categories,
+        chart_months=[l for i, l in months_labels],
+        chart_amounts=chart_amounts,
     )
 
 

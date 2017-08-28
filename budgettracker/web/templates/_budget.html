@@ -19,7 +19,7 @@
     {% for category in categories %}
       {% if category.has_warning %}
       <li>
-        <a href="javascript:" onclick="filterTransactions('{{category.name}}')">
+        <a href="javascript:" onclick="filterTransactions({category: '{{category.name}}'})">
           &#9888; {{category.name}} ({{famount(category.amount)}} / {{famount(category.warning_threshold)}})
         </a>
       </li>

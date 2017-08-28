@@ -1,5 +1,5 @@
 {% macro transaction(tx, is_planned=False) -%}
-  <li data-tx-id="{{tx.id}}" data-tx-amount="{{tx.amount}}" data-tx-date="tx.date.isoformat()">
+  <li data-tx-id="{{tx.id}}" data-tx-amount="{{tx.amount}}" data-tx-date="{{tx.date.isoformat()}}">
     <span class="date">{{tx.date.strftime('%d %b')}}</span>
     <span class="label" title="{{tx.label}}">{{tx.label}}</span>
     {% if tx.amount < 0 %}

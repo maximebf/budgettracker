@@ -4,7 +4,7 @@
     <span title="{% if category.has_warning %}&#9888; {% endif %}{{category.name or 'Uncategorized'}}: {{famount(category.amount)}}{% if category.warning_threshold %} / {{famount(category.warning_threshold)}}{% endif %} ({{category.pct}}%)"
       style="flex-basis: {{category.pct}}%; background-color: {{category.color or '#eee'}}"
       data-name="{{category.name or 'Uncategorized'}}" data-amount="{{category.amount}}"
-      onclick="filterTransactions({category: {{ ("'" + category.name + "'") if category.name else ''}} })"></span>
+      onclick="filterTransactions({category: {{ ("'" + category.name + "'") if category.name else 'null'}} })"></span>
     {% endif %}
   {% endfor %}
 </div>

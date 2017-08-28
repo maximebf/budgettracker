@@ -1,6 +1,6 @@
-{% from 'macros.html' import transaction, goal_bar with context %}
+{% from 'macros.html' import transaction with context %}
 {% extends "layout.html" %}
-{% block title %}{{goal.label}} in {{date.year}}{% endblock %}
+{% block title %}Income in {{date.year}}{% endblock %}
 {% block head %}
   <script src="{{url_for('static', filename='chartist.min.js')}}"></script>
   <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='chartist.min.css')}}">
@@ -8,12 +8,12 @@
 
 {% block page_header %}
   <div id="header">
-    <a href="{{url_for('goal', year=prev_year, label=goal.label.lower())}}" title="Previous year">&laquo;</a>
-    <h1>{{ goal.label }} in <a href="{{url_for('year', year=date.year)}}" class="u">{{date.year}}</a></h1>
+    <a href="{{url_for('income', year=prev_year)}}" title="Previous year">&laquo;</a>
+    <h1>Income in <a href="{{url_for('year', year=date.year)}}" class="u">{{date.year}}</a></h1>
     {% if next_year %}
-    <a href="{{url_for('goal', year=next_year, label=goal.label.lower())}}" title="Next year">&raquo;</a>
+      <a href="{{url_for('income', year=next_year)}}" title="Next year">&raquo;</a>
     {% else %}
-    <span></span>
+      <span></span>
     {% endif %}
   </div>
 {% endblock %}
@@ -21,39 +21,19 @@
 {% block page %}
   <div class="budget">
     <div class="header">
-      {{ goal_bar(goal) }}
+      <div class="value pos">
+        {{famount(income)}}
+      </div>
     </div>
-    <p>
-      <label>Target</label>
-      <span class="value">{{famount(goal.target)}}</span>
-    </p>
-    <p>
-      <label>Saved</label>
-      <span class="value">{{famount(goal.saved)}}</span>
-    </p>
-    <p>
-      <label>Used</label>
-      <span class="value">{{famount(goal.used)}}</span>
-    </p>
-    <p>
-      <label>Remaining</label>
-      <span class="value">{{famount(goal.remaining)}}</span>
-    </p>
   </div>
 
   <div class="ct-chart ct-major-eleventh"></div>
 
-  {% if categories %}
-    {% include "_categories_bar.html" %}
-  {% endif %}
-
-  <h2 id="filter-title"></h2>
   <ul class="transactions">
     {% for tx in transactions %}
       {{ transaction(tx) }}
     {% endfor %}
   </ul>
-  <a id="clear-filter" href="javascript:" onclick="clearTransactionsFilter()">Clear filter</a>
 
   <script>
      document.addEventListener("DOMContentLoaded", function() {

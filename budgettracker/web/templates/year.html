@@ -14,7 +14,7 @@
     {% if next_year %}
       <a href="{{url_for('year', year=next_year)}}" title="Next year">&raquo;</a>
     {% else %}
-      <span></span>
+      <a href="{{url_for('index')}}" title="Current month">&#8962;</a>
     {% endif %}
   </div>
   {% include "_month_switcher.html" %}
@@ -53,12 +53,12 @@
       <span class="value {{ value_class(savings_after_goals, zero_as_neg=True) }}">{{famount(savings_after_goals)}}</span>
     </p>
     <p>
-      <label>Income</label>
-      <span class="value {{ value_class(budgets.income) }}">{{famount(budgets.income)}}</span>
+      <label><a href="{{url_for('income', year=date.year)}}">Income</a></label>
+      <span class="value {{ value_class(budgets.income) }}">{{famount(budgets.income)}} / {{famount(budgets.expected_income)}}</span>
     </p>
     <p>
       <label>Planned expenses</label>
-      <span class="value warn">{{famount(budgets.planned_expenses)}}</span>
+      <span class="value warn">{{famount(budgets.planned_expenses)}} / {{famount(budgets.expected_planned_expenses)}}</span>
     </p>
     <p>
       <label>Expenses</label>
@@ -119,10 +119,8 @@
         <tr>
           <td>
             <span class="color" style="background-color: {{category.color or '#eee'}}"></span>
-            <a href="{{url_for('category', year=date.year, name=category.name.lower() if category.name else 'uncategorized')}}">
-              {{category.name or 'Uncategorized'}}
-              {% if category.has_warning %}&#9888;{% endif %}
-            </a>
+            <a href="{{url_for('category', year=date.year, name=category.name.lower() if category.name else 'uncategorized')}}">{{category.name or 'Uncategorized'}}</a>
+            {% if category.has_warning %}&#9888;{% endif %}
           </td>
           <td>
             {{famount(category.amount)}}

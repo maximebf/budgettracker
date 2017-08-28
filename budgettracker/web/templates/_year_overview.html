@@ -11,6 +11,7 @@
     {% if budgets and date.year == current_month.year %}
     <p class="remaining-planned">
       Remaining planned expenses: {{famount(budgets.undetected_planned_expenses)}}<br>
+      Savings: {{famount(budgets.savings, True)}}
     </p>
     {% endif %}
     <table id="accounts">

@@ -1,6 +1,6 @@
 <div id="transaction-options">
   <div class="backdrop" onclick="hideTransactionOptions()"></div>
-  <form method="post" data-action-base="{{url_for('index', year=date.year, month=date.month)}}"
+  <form method="post" data-action-base="{{url_for('year', year=date.year)}}"
       onsubmit="onTransactionOptionsFormSubmit(event)">
     <h4></h4>
     <fieldset>
