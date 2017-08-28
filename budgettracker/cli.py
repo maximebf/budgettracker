@@ -87,7 +87,7 @@ def show(month=None, year=None, refresh=False):
         print u"Savings               = {0} / {1}".format(famount(budget.expected_savings), famount(budget.savings_goal))
         print u"Safe to spend         = {0}".format(famount(budget.expected_remaining))
     else:
-        print u"Real Balance          = {0:+}".format(famount(budget.real_balance))
+        print u"Real Balance          = {0}".format(famount(budget.real_balance, True))
         print "-----------------------------------------"
         print u"Savings               = {0} / {1}".format(famount(budget.savings), famount(budget.savings_goal))
         print u"Budget balance        = {0}".format(famount(budget.balance, True))

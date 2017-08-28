@@ -114,6 +114,8 @@ class BudgetList(list):
 
     @property
     def adjusted_savings_goal(self):
+        if not self.current:
+            return 0
         balance = self.savings_balance
         if balance < 0:
             remaining_months = 12 - datetime.date.today().month - 1

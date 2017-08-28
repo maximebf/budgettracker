@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='budgettracker',
-    version='1.3',
+    version='1.3.1',
     url='http://github.com/maximebf/budgettracker',
     license='MIT',
     author='Maxime Bouroumeau-Fuseau',
