@@ -102,6 +102,7 @@ def index(year=None, month=None):
 
 
 @app.route('/<int:year>')
+@requires_passcode
 def year(year):
     current = datetime.date.today().replace(day=1)
     date = datetime.date(year, 1, 1)
@@ -135,6 +136,7 @@ def year(year):
 
 
 @app.route('/<int:year>/income')
+@requires_passcode
 def income(year):
     current = datetime.date.today().replace(day=1)
     date = datetime.date(year, 1, 1)
@@ -158,6 +160,7 @@ def income(year):
 
 
 @app.route('/<int:year>/categories/<name>')
+@requires_passcode
 def category(year, name):
     current = datetime.date.today().replace(day=1)
     date = datetime.date(year, 1, 1)
@@ -196,6 +199,7 @@ def category(year, name):
 
 
 @app.route('/<int:year>/goals/<label>')
+@requires_passcode
 def goal(year, label):
     current = datetime.date.today().replace(day=1)
     date = datetime.date(year, 1, 1)
