@@ -6,7 +6,7 @@ Small budget tracking app for personal use
     $ mdkdir budget && cd budget
     $ budgettracker web
 
-Then visit <http://localhost:5000> and start tracking your finances. Click on the &#8635; icon to upload a CSV file.
+Then visit <http://localhost:5000> and start tracking your finances. Click on the &#8635; icon to upload a CSV file.  
 Also has a CLI interface (see below)
 
 ![](screenshot.png)
@@ -26,10 +26,11 @@ Also has a CLI interface (see below)
  - Support for auto-adding transactions to categories via keyword matching
  - Keep track of income, expenses and savings
  - Notifications for low amounts and categories warning threshold
+ - Stats page for the whole year and for each category (**TIP:** click on the year in the header)
  
 ### Income sources
 
-Define your monhtly income sources to make calculations accurate. As salaries are paid at the end of the month, the income will not be detected until the end which would render all statistics useless until the end of the month. The system also allows you to define an income delay for salaries which are paid at the beginning of the next month.
+Define your monhtly income sources to make calculations accurate. As salaries are paid at the end of the month (in France), the income will not be detected until the end which would render all statistics useless until the end of the month. The system also allows you to define an income delay for salaries which are paid at the beginning of the next month.
  
 ### Planned expenses:
 
@@ -53,7 +54,7 @@ You can view how your savings is used by goals using the following command:
 
     $ budgettracker analyze_savings
     
-**TIP**: click on the balance at the top of the web interface to see status of budget goals
+**TIP**: click on the year at the top of the web interface to see status of budget goals
     
 ### Safe to spend amount
 
@@ -75,7 +76,7 @@ No headers, expected columns:
  - label
  - date as YYYY-MM-DD
  - amount
- - account
+ - account number
     
 ## Configuration
 
@@ -108,6 +109,7 @@ Show budget:
     $ budgettracker show [month] [year]
     
 Where month can be the number of the month
+
 Update:
 
     $ budgettracker update [filename]
