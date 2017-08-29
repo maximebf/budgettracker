@@ -106,11 +106,15 @@ def index(year=None, month=None):
 def year(year):
     current = datetime.date.today().replace(day=1)
     date = datetime.date(year, 1, 1)
+    nb_months = 12 if date.year < current.year else current.month
     accounts = storage.load_accounts()
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
 
     budget_goals, savings_after_goals = compute_yearly_budget_goals_from_config(
         config, date, storage=storage)
+    savings_goal = sum([g.target for g in budget_goals if g.target])
+    monthly_savings_capacity = (budgets.income - budgets.all_expenses) / nb_months
+    expected_monthly_savings_capacity = (budgets.income - budgets.all_expected_expenses) / nb_months
 
     categories = compute_categories(budgets.transactions,
         map(Category.from_dict, config.get('categories', [])),
@@ -124,9 +128,13 @@ def year(year):
         account_balance=sum([a.amount for a in accounts]),
         budgets=budgets,
         budget_goals=budget_goals,
+        savings_goal=savings_goal,
         savings_after_goals=savings_after_goals,
+        monthly_savings_capacity=monthly_savings_capacity,
+        expected_monthly_savings_capacity=expected_monthly_savings_capacity,
         categories=categories,
         months=months_labels,
+        nb_months=nb_months,
         chart_months=[l for i, l in months_labels],
         chart_incomes=[(b.income if b.month < current else b.expected_income) for b in budgets],
         chart_all_expenses=[-b.expenses-b.expected_planned_expenses for b in budgets],

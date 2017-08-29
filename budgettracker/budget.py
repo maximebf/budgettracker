@@ -14,6 +14,17 @@ class Budget(namedtuple('Budget', ['month', 'transactions', 'income_transactions
     def undetected_planned_expenses(self):
         return self.expected_planned_expenses - self.planned_expenses
 
+    @property
+    def all_expenses(self):
+        current = datetime.date.today().replace(day=1)
+        if self.month >= current:
+            return self.expenses + self.expected_planned_expenses
+        return self.expenses + self.planned_expenses
+
+    @property
+    def all_expected_expenses(self):
+        return self.expenses + self.expected_planned_expenses
+
     def to_dict(self, with_transactions=True):
         dct = {
             "month": self.month,
@@ -105,6 +116,14 @@ class BudgetList(list):
     @property
     def expenses(self):
         return self._sum('expenses')
+    
+    @property
+    def all_expenses(self):
+        return self.expenses + self.planned_expenses
+    
+    @property
+    def all_expected_expenses(self):
+        return self.expenses + self.expected_planned_expenses
     
     @property
     def savings(self):

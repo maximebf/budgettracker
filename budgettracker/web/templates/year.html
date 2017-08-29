@@ -48,31 +48,85 @@
       </label>
       <span class="value {{ ('neg' if not next_year else 'warn') if budgets.undetected_planned_expenses > 0 else 'pos' }}">{{famount(budgets.undetected_planned_expenses)}}</span>
     </p>
-    <p>
-      <label>Available savings after goals</label>
-      <span class="value {{ value_class(savings_after_goals, zero_as_neg=True) }}">{{famount(savings_after_goals)}}</span>
-    </p>
-    <p>
-      <label><a href="{{url_for('income', year=date.year)}}">Income</a></label>
-      <span class="value {{ value_class(budgets.income) }}">{{famount(budgets.income)}} / {{famount(budgets.expected_income)}}</span>
-    </p>
-    <p>
-      <label>Planned expenses</label>
-      <span class="value warn">{{famount(budgets.planned_expenses)}} / {{famount(budgets.expected_planned_expenses)}}</span>
-    </p>
-    <p>
-      <label>Expenses</label>
-      <span class="value neg">{{famount(budgets.expenses)}}</span>
-    </p>
     {% if not next_year %}
     <p>
       <label>
         Real balance
-        <span class="tooltip">?<span>May not match the sum of previous numbers are some calculations use expected amounts</span></span>
+        <span class="tooltip">?<span>May not match the sum of income - expenses are some calculations use expected amounts</span></span>
       </label>
       <span class="value {{ value_class(budgets.real_balance) }}">
         {{famount(budgets.real_balance, True)}}
       </span>
+    </p>
+    {% endif %}
+    <p>
+      <label><a href="{{url_for('income', year=date.year)}}">Income</a></label>
+      <span class="value {{ value_class(budgets.income) }}">
+        {{famount(budgets.income)}}
+        {% if budgets.expected_income %} / {{famount(budgets.expected_income)}}{% endif %}
+      </span>
+    </p>
+    <p class="em">
+      <label>Avg. income</label>
+      <span class="value pos">
+        {{famount(budgets.income / nb_months)}}
+        {% if budgets.expected_income %} / {{famount(budgets.expected_income / nb_months)}}{% endif %}
+       </span>
+    </p>
+    {% if budgets.expected_planned_expenses %}
+    <p>
+      <label>Planned expenses</label>
+      <span class="value warn">{{famount(budgets.planned_expenses)}} / {{famount(budgets.expected_planned_expenses)}}</span>
+    </p>
+    <p class="em">
+      <label>Avg. monthly planned expenses</label>
+      <span class="value warn">{{famount(budgets.planned_expenses / nb_months)}} / {{famount(budgets.expected_planned_expenses / nb_months)}}</span>
+    </p>
+    {% endif %}
+    <p>
+      <label>Expenses</label>
+      <span class="value neg">{{famount(budgets.expenses)}}</span>
+    </p>
+    <p class="em">
+      <label>Avg. monthly expenses</label>
+      <span class="value neg">{{famount(budgets.expenses / nb_months)}}</span>
+    </p>
+    {% if budgets.expected_planned_expenses %}
+    <p class="em">
+      <label>Avg. total monthly expenses</label>
+      <span class="value neg">
+        {{famount(budgets.all_expenses / nb_months)}}
+        {% if budgets.expected_planned_expenses %} / {{famount(budgets.all_expected_expenses / nb_months)}}{% endif %}
+      </span>
+    </p>
+    {% endif %}
+    <p class="em">
+      <label>Avg. monthly savings capacity</label>
+      <span class="value {{value_class(monthly_savings_capacity)}}">
+        {{famount(monthly_savings_capacity, True)}}
+        {% if budgets.expected_planned_expenses %} / {{famount(expected_monthly_savings_capacity, True)}}{% endif %}
+      </span>
+    </p>
+    <p class="em">
+      <label>Avg. yearly savings capacity</label>
+      <span class="value {{value_class(monthly_savings_capacity*12)}}">
+        {{famount(monthly_savings_capacity*12, True)}}
+        {% if budgets.expected_planned_expenses %} / {{famount(expected_monthly_savings_capacity*12, True)}}{% endif %}
+      </span>
+    </p>
+    {% if budget_goals and not next_year %}
+    <p class="em">
+      <label>
+        Savings goal
+        {% if budgets.income - budgets.all_expenses < savings_goal %}<span title="Goals cannot be reached">&#9888;</span>{% endif %}
+      </label>
+      <span class="value {{'neg' if budgets.income - budgets.all_expenses < savings_goal else 'pos'}}">
+        {{famount(savings_goal, True)}}
+      </span>
+    </p>
+    <p>
+      <label>Available savings after goals</label>
+      <span class="value {{ value_class(savings_after_goals, zero_as_neg=True) }}">{{famount(savings_after_goals)}}</span>
     </p>
     {% endif %}
   </div>
@@ -111,7 +165,7 @@
     <table id="categories" class="data-table">
       <thead>
         <tr>
-          <th colspan="2">Categories</th>
+          <th colspan="3">Categories</th>
         </tr>
       </thead>
       <tbody>
@@ -122,9 +176,12 @@
             <a href="{{url_for('category', year=date.year, name=category.name.lower() if category.name else 'uncategorized')}}">{{category.name or 'Uncategorized'}}</a>
             {% if category.has_warning %}&#9888;{% endif %}
           </td>
-          <td>
+          <td style="text-align: right">
             {{famount(category.amount)}}
             {% if category.warning_threshold %} / {{famount(category.warning_threshold)}}{% endif %} 
+          </td>
+          <td width="100">
+            <em>{{famount(category.amount / nb_months)}}</em>
           </td>
         </tr>
         {% endfor %}

@@ -256,6 +256,9 @@ hr {
     color: #444;
     font-weight: bold;
   }
+  .budget > p.em > label {
+    font-style: italic;
+  }
   .budget > p > .value {
     float: right;
     font-family: monospace;
@@ -267,6 +270,9 @@ hr {
     }
   .budget > p.big > .value {
     font-size: 20px;
+  }
+  .budget > p.em > .value {
+    font-style: italic;
   }
 
 .transactions {
