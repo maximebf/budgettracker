@@ -6,7 +6,7 @@ Small budget tracking app for personal use
     $ mdkdir budget && cd budget
     $ budgettracker web
 
-Then visit <http://localhost:5000> and start tracking your finances. Click on the &#8635; icon to upload a CSV file.  
+Then visit <http://localhost:5000> and start tracking your finances. Click on the &#8635; icon to upload a [CSV file](#structure-of-csv-files-to-import).  
 Also has a CLI interface (see below)
 
 ![](screenshot.png)
