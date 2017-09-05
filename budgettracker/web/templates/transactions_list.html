@@ -1,6 +1,6 @@
 {% from 'macros.html' import transaction with context %}
 {% extends "layout.html" %}
-{% block title %}Income in {{date.year}}{% endblock %}
+{% block title %}{{page_title}} in {{date.year}}{% endblock %}
 {% block head %}
   <script src="{{url_for('static', filename='chartist.min.js')}}"></script>
   <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='chartist.min.css')}}">
@@ -9,7 +9,7 @@
 {% block page_header %}
   <div id="header">
     <a href="{{url_for('income', year=prev_year)}}" title="Previous year">&laquo;</a>
-    <h1>Income in <a href="{{url_for('year', year=date.year)}}" class="u">{{date.year}}</a></h1>
+    <h1>{{page_title}} in <a href="{{url_for('year', year=date.year)}}" class="u">{{date.year}}</a></h1>
     {% if next_year %}
       <a href="{{url_for('income', year=next_year)}}" title="Next year">&raquo;</a>
     {% else %}
@@ -19,11 +19,9 @@
 {% endblock %}
 
 {% block page %}
-  <div class="budget">
-    <div class="header">
-      <div class="value pos">
-        {{famount(income)}}
-      </div>
+  <div class="stats-header">
+    <div class="value pos">
+      {{famount(income)}}
     </div>
   </div>
 

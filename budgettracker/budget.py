@@ -59,13 +59,13 @@ class BudgetList(list):
             tx.extend(getattr(budget, key))
         return tx
 
-    def _sum(self, key):
+    def _sum(self, key, real=False):
         total = 0
         current = datetime.date.today().replace(day=1)
         for budget in self:
-            if budget.month == current and not key.startswith('expected_') and hasattr(budget, 'expected_%s' % key):
+            if not real and budget.month == current and not key.startswith('expected_') and hasattr(budget, 'expected_%s' % key):
                 total += getattr(budget, 'expected_%s' % key)
-            elif budget.month < current or key.startswith('expected_'):
+            elif real or budget.month < current or key.startswith('expected_'):
                 total += getattr(budget, key)
         return total
 
@@ -90,6 +90,10 @@ class BudgetList(list):
         return self._sum('real_balance')
     
     @property
+    def real_real_balance(self):
+        return self._sum('real_balance', real=True)
+    
+    @property
     def balance(self):
         return self._sum('balance')
     
@@ -102,12 +106,20 @@ class BudgetList(list):
         return self._sum('income')
     
     @property
+    def real_income(self):
+        return self._sum('income', real=True)
+    
+    @property
     def expected_planned_expenses(self):
         return self._sum('expected_planned_expenses')
     
     @property
     def planned_expenses(self):
         return self._sum('planned_expenses')
+    
+    @property
+    def real_planned_expenses(self):
+        return self._sum('planned_expenses', real=True)
     
     @property
     def undetected_planned_expenses(self):
@@ -120,6 +132,10 @@ class BudgetList(list):
     @property
     def all_expenses(self):
         return self.expenses + self.planned_expenses
+    
+    @property
+    def all_real_expenses(self):
+        return self.expenses + self.real_planned_expenses
     
     @property
     def all_expected_expenses(self):
@@ -421,10 +437,10 @@ def budgetize_month(transactions, date, income_sources=None, planned_expenses=No
     if budget_goals:
         savings_goal = sum([s.savings_per_month for s in budget_goals])
     
-    real_balance = sum([tx.amount for tx in transactions])
     income = sum([tx.amount for tx in income_transactions])
     expenses = abs(sum([tx.amount for tx in expenses_transactions]))
     planned_expenses = abs(sum([tx.amount for tx in planned_expenses_transactions]))
+    real_balance = income - planned_expenses - expenses
     savings = income - expected_planned_expenses - expenses
     balance = savings - savings_goal
 

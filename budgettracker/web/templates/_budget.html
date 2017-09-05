@@ -1,88 +1,90 @@
-<div class="budget">
-  <div class="header">
-    {% if not next_date %}
-    <div class="title">
-      Safe to spend
-      <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
-    </div>
-    <div class="value {{ value_class(budget.expected_remaining, zero_as_neg=True) }}">{{famount(budget.expected_remaining)}}</div>
-    {% else %}
-    <div class="title">
-      <a href="{{url_for('settings')}}">Savings</a>
-      <span class="tooltip">?<span>Savings made after <em>expected planned expenses</em> are taken into account. If negative then amount used from the savings to cover this month.</span></span>
-    </div>
-    <div class="value {{ value_class(budget.savings, budget.savings_goal) }}">
-      {{famount(budget.savings, True)}}
-    </div>
-    {% endif %}
-    <ul class="warnings">
-    {% for category in categories %}
-      {% if category.has_warning %}
-      <li>
-        <a href="javascript:" onclick="filterTransactions({category: '{{category.name}}'})">
-          &#9888; {{category.name}} ({{famount(category.amount)}} / {{famount(category.warning_threshold)}})
-        </a>
-      </li>
-      {% endif %}
-    {% endfor %}
-    </ul>
-  </div>
+<div class="stats-header">
   {% if not next_date %}
-    <p class="big">
-      <label><a href="{{url_for('settings')}}">Savings</a></label>
-      <span class="value {{ value_class(budget.expected_savings, budget.savings_goal) }}">
-        {{famount(budget.expected_savings)}}
-        {% if budget.savings_goal > 0 %}/ {{famount(budget.savings_goal)}}{% endif %}
-        {% if budgets.adjusted_savings_goal > budget.savings_goal %}
-          <span class="warning" title="Adjusted savings goal: {{famount(budgets.adjusted_savings_goal)}}">&#9888;</span>
-        {% endif %}
-      </span>
-    </p>
+  <div class="title">
+    Safe to spend
+    <span class="tooltip">?<span>Amount which is safe to spend according to the budget</span></span>
+  </div>
+  <div class="value {{ value_class(budget.expected_remaining, zero_as_neg=True) }}">{{famount(budget.expected_remaining)}}</div>
   {% else %}
-  <p class="big">
-    <label>
-      Budget Balance
-      <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all planned expenses are taken into account)</span></span>
-    </label>
-    <span class="value {{ value_class(budget.balance) }}">{{famount(budget.balance, True)}}</span>
-  </p>
+  <div class="title">
+    <a href="{{url_for('settings')}}">Savings</a>
+    <span class="tooltip">?<span>Savings made after <em>expected planned expenses</em> are taken into account. If negative then amount used from the savings to cover this month.</span></span>
+  </div>
+  <div class="value {{ value_class(budget.savings, budget.savings_goal) }}">
+    {{famount(budget.savings, True)}}
+  </div>
   {% endif %}
-  <p>
-    <label>Real Balance</label>
-    <span class="value {{ value_class(budget.real_balance) }}">{{famount(budget.real_balance, True)}}</span>
-  </p>
-  <p>
-    <label>
-      <a href="{{url_for('settings')}}">Income</a>
-      <span class="tooltip">?<span><em>Expected income</em> is used unless month is finished or income higher than expected</span></span>
-    </label>
-    <span class="value {{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
-      {{famount(max(budget.expected_income, budget.income) if not next_date else budget.income)}}
-      {% if budget.expected_income %}
-      {% if budget.income > budget.expected_income %}
-        ({{famount(budget.income - budget.expected_income, True)}})
-      {% elif budget.income < budget.expected_income %}
-        ({{famount(budget.expected_income - budget.income, True)}})
-      {% endif %}
-      {% endif %}
-    </span>
-  </p>
-  {% if budget.expected_planned_expenses %}
-  <p>
-    <label>
-      <a href="{{url_for('settings')}}">Planned expenses</a>
-      <span class="tooltip">?<span><em>Expected planned expenses</em> is used for calculations. The number in brackets is the actual amount of planned expenses detected during this month</span></span>
-    </label>
-    <span class="value neg">
-      {{famount(budget.expected_planned_expenses)}} ({{famount(budget.planned_expenses)}})
-    </span>
-  </p>
-  {% endif %}
-  <p>
-    <label>
-      Expenses
-      <span class="tooltip">?<span>Does not include planned expenses</span></span>
-    </label>
-    <span class="value neg">{{famount(budget.expenses)}}</span>
-  </p>
+  <ul class="warnings">
+  {% for category in categories %}
+    {% if category.has_warning %}
+    <li>
+      <a href="javascript:" onclick="filterTransactions({category: '{{category.name}}'})">
+        &#9888; {{category.name}} ({{famount(category.amount)}} / {{famount(category.warning_threshold)}})
+      </a>
+    </li>
+    {% endif %}
+  {% endfor %}
+  </ul>
 </div>
+<table class="stats-table">
+  <tbody>
+    {% if not next_date %}
+      <tr class="big">
+        <td><a href="{{url_for('settings')}}">Savings</a></td>
+        <td class="{{ value_class(budget.expected_savings, budget.savings_goal) }}">
+          {{famount(budget.expected_savings)}}
+          {% if budget.savings_goal > 0 %}/ {{famount(budget.savings_goal)}}{% endif %}
+          {% if budgets.adjusted_savings_goal > budget.savings_goal %}
+            <span class="warning" title="Adjusted savings goal: {{famount(budgets.adjusted_savings_goal)}}">&#9888;</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+    <tr class="big">
+      <td>
+        Budget Balance
+        <span class="tooltip">?<span>Theorical balance if the budget is respected (meaning if savings and all planned expenses are taken into account)</span></span>
+      </td>
+      <td class="{{ value_class(budget.balance) }}">{{famount(budget.balance, True)}}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td>Real Balance</td>
+      <td class="{{ value_class(budget.real_balance) }}">{{famount(budget.real_balance, True)}}</td>
+    </tr>
+    <tr>
+      <td>
+        <a href="{{url_for('settings')}}">Income</a>
+        <span class="tooltip">?<span><em>Expected income</em> is used unless month is finished or income higher than expected</span></span>
+      </td>
+      <td class="{{ 'pos' if budget.income >= budget.expected_income else 'warn' }}">
+        {{famount(max(budget.expected_income, budget.income) if not next_date else budget.income)}}
+        {% if budget.expected_income %}
+        {% if budget.income > budget.expected_income %}
+          ({{famount(budget.income - budget.expected_income, True)}})
+        {% elif budget.income < budget.expected_income %}
+          ({{famount(budget.expected_income - budget.income, True)}})
+        {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% if budget.expected_planned_expenses %}
+    <tr>
+      <td>
+        <a href="{{url_for('settings')}}">Planned expenses</a>
+        <span class="tooltip">?<span><em>Expected planned expenses</em> is used for calculations. The number in brackets is the actual amount of planned expenses detected during this month</span></span>
+      </td>
+      <td class="neg">
+        {{famount(budget.expected_planned_expenses)}} ({{famount(budget.planned_expenses)}})
+      </td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td>
+        Expenses
+        <span class="tooltip">?<span>Does not include planned expenses</span></span>
+      </td>
+      <td class="neg">{{famount(budget.expenses)}}</td>
+    </tr>
+  </tbody>
+</table>

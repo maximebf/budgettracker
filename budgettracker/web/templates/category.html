@@ -19,24 +19,26 @@
 {% endblock %}
 
 {% block page %}
-  <div class="budget">
-    <div class="header">
-      <div class="value">
-        {{famount(category.amount)}}
-        {% if category.has_warning %}&#9888;{% endif %}
-      </div>
+  <div class="stats-header">
+    <div class="value">
+      {{famount(category.amount)}}
+      {% if category.has_warning %}&#9888;{% endif %}
     </div>
-    <p>
-      <label>Monthly average</label>
-      <span class="value">{{famount(monthly_average)}}</span>
-    </p>
-    {% if category.warning_threshold %}
-    <p>
-      <label>Warning threshold</label>
-      <span class="value">{{famount(category.warning_threshold / 12)}}</span>
-    </p>
-    {% endif %}
   </div>
+  <table class="stats-table">
+    <tbody>
+      <tr>
+        <td>Monthly average</td>
+        <td>{{famount(monthly_average)}}</td>
+      </tr>
+      {% if category.warning_threshold %}
+      <tr>
+        <td>Warning threshold</td>
+        <td>{{famount(category.warning_threshold / 12)}}</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
 
   <div class="ct-chart ct-major-eleventh"></div>
 

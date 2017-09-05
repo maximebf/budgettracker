@@ -19,27 +19,31 @@
 {% endblock %}
 
 {% block page %}
-  <div class="budget">
-    <div class="header">
+  <div class="stats-header">
+    <div class="value">
       {{ goal_bar(goal) }}
     </div>
-    <p>
-      <label>Target</label>
-      <span class="value">{{famount(goal.target)}}</span>
-    </p>
-    <p>
-      <label>Saved</label>
-      <span class="value">{{famount(goal.saved)}}</span>
-    </p>
-    <p>
-      <label>Used</label>
-      <span class="value">{{famount(goal.used)}}</span>
-    </p>
-    <p>
-      <label>Remaining</label>
-      <span class="value">{{famount(goal.remaining)}}</span>
-    </p>
   </div>
+  <table class="stats-table">
+    <tbody>
+      <tr>
+        <td>Target</td>
+        <td>{{famount(goal.target)}}</td>
+      </tr>
+      <tr>
+        <td>Saved</td>
+        <td>{{famount(goal.saved)}}</td>
+      </tr>
+      <tr>
+        <td>Used</td>
+        <td>{{famount(goal.used)}}</td>
+      </tr>
+      <tr>
+        <td>Remaining</td>
+        <td>{{famount(goal.remaining)}}</td>
+      </tr>
+    </tbody>
+  </table>
 
   <div class="ct-chart ct-major-eleventh"></div>
 

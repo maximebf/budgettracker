@@ -113,8 +113,15 @@ def year(year):
     budget_goals, savings_after_goals = compute_yearly_budget_goals_from_config(
         config, date, storage=storage)
     savings_goal = sum([g.target for g in budget_goals if g.target])
-    monthly_savings_capacity = (budgets.income - budgets.all_expenses) / nb_months
-    expected_monthly_savings_capacity = (budgets.income - budgets.all_expected_expenses) / nb_months
+    current_savings_goal = savings_goal / 12 * nb_months
+
+    safe_to_spend = budgets.expected_income - budgets.expected_planned_expenses - current_savings_goal
+    savings = budgets.real_income - budgets.all_real_expenses
+    expected_savings = budgets.income - budgets.all_expected_expenses
+    if budget_goals:
+        planned_savings = current_savings_goal
+    else:
+        planned_savings = budgets.expected_income - budgets.expected_planned_expenses
 
     categories = compute_categories(budgets.transactions,
         map(Category.from_dict, config.get('categories', [])),
@@ -130,8 +137,10 @@ def year(year):
         budget_goals=budget_goals,
         savings_goal=savings_goal,
         savings_after_goals=savings_after_goals,
-        monthly_savings_capacity=monthly_savings_capacity,
-        expected_monthly_savings_capacity=expected_monthly_savings_capacity,
+        safe_to_spend=safe_to_spend,
+        savings=savings,
+        expected_savings=expected_savings,
+        planned_savings=planned_savings,
         categories=categories,
         months=months_labels,
         nb_months=nb_months,
@@ -148,20 +157,42 @@ def year(year):
 def income(year):
     current = datetime.date.today().replace(day=1)
     date = datetime.date(year, 1, 1)
-
-    transactions = sort_transactions(filter(lambda tx: tx.amount > 0,
-        storage.load_yearly_transactions(date)))
+    budgets = load_yearly_budgets_from_config(config, date, storage=storage)
 
     chart_amounts = [0] * 12
-    for tx in transactions:
-        chart_amounts[tx.date.month - 1] += abs(tx.amount)
+    for budget in budgets:
+        chart_amounts[budget.month.month - 1] = budget.income
 
-    return render_template('income.html',
+    return render_template('transactions_list.html',
+        page_title='Income',
         date=date,
         prev_year=(year - 1),
         next_year=(year + 1) if year < current.year else None,
-        income=sum(chart_amounts),
-        transactions=transactions,
+        income=budgets.real_income,
+        transactions=sort_transactions(budgets.income_transactions),
+        chart_months=[l for i, l in months_labels],
+        chart_amounts=chart_amounts
+    )
+
+
+@app.route('/<int:year>/planned-expenses')
+@requires_passcode
+def planned_expenses(year):
+    current = datetime.date.today().replace(day=1)
+    date = datetime.date(year, 1, 1)
+    budgets = load_yearly_budgets_from_config(config, date, storage=storage)
+
+    chart_amounts = [0] * 12
+    for budget in budgets:
+        chart_amounts[budget.month.month - 1] = budget.planned_expenses
+
+    return render_template('transactions_list.html',
+        page_title='Planned expenses',
+        date=date,
+        prev_year=(year - 1),
+        next_year=(year + 1) if year < current.year else None,
+        income=budgets.real_planned_expenses,
+        transactions=sort_transactions(budgets.planned_expenses_transactions),
         chart_months=[l for i, l in months_labels],
         chart_amounts=chart_amounts
     )

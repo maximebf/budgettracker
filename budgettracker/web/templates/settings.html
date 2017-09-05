@@ -65,7 +65,7 @@
           {% for exp in planned_expenses %}
           <tr>
             <td><input type="text" value="{{exp.label}}" name="planned_expenses_label" required></td>
-            <td><input type="number" value="{{exp.amount}}" name="planned_expenses_amount" required></td>
+            <td><input type="number" value="{{exp.amount}}" name="planned_expenses_amount" required step="any"></td>
             <td>
               <select name="planned_expenses_recurrence">
                 {% for recur in ('Weekly', 'Monthly', 'Yearly') %}
@@ -84,7 +84,7 @@
       <template>
         <tr>
           <td><input type="text" value="" name="planned_expenses_label" required></td>
-          <td><input type="number" value="" name="planned_expenses_amount" required></td>
+          <td><input type="number" value="" name="planned_expenses_amount" required step="any"></td>
           <td>
             <select name="planned_expenses_recurrence">
               {% for recur in ('Weekly', 'Monthly', 'Yearly') %}
@@ -113,7 +113,7 @@
           {% for goal in budget_goals %}
           <tr>
             <td><input type="text" value="{{goal.label}}" name="budget_goals_label" required></td>
-            <td><input type="number" value="{{goal.amount}}" name="budget_goals_amount"></td>
+            <td><input type="number" value="{{goal.amount}}" name="budget_goals_amount" step="any"></td>
             <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
           </tr>
           {% endfor %}
@@ -122,7 +122,7 @@
       <template>
         <tr>
           <td><input type="text" value="" name="budget_goals_label" required></td>
-          <td><input type="number" value="" name="budget_goals_amount"></td>
+          <td><input type="number" value="" name="budget_goals_amount" step="any"></td>
           <td><button type="button" onclick="removeRow(event)">&odash;</button></td>
         </tr>
       </template>

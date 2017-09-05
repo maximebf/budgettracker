@@ -208,72 +208,85 @@ hr {
     border-color: #ccc;
   }
 
-.budget {
-  margin-top: 30px;
-}
-.budget > .header {
-  margin: 0 0 20px;
+.stats-header {
+  margin: 30px 0 20px;
   text-align: center;
 }
-  .budget > .header > .title {
+  .stats-header > .title {
     margin-bottom: 10px;
     color: #aaa;
   }
-    .budget > .header .title a {
+    .stats-header .title a {
       color: #aaa;
     }
-  .budget > .header > .value {
+  .stats-header > .value {
     font-size: 40px;
     font-family: monospace;
   }
-  .budget > .header > .warnings {
+  .stats-header > .warnings {
     list-style: none;
     margin: 10px 0 0;
     padding: 0;
   }
-    .budget > .header > .warnings a {
+    .stats-header > .warnings a {
       color: #f99f4f;
       text-decoration: none;
       font-size: 12px;
       font-weight: bold;
     }
-.budget > p {
-  border-top: 1px dotted #eee;
-  padding: 6px 0;
-  margin: 0;
+
+.stats-table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
 }
-.budget > p.big {
-  font-size: 20px;
-  padding: 12px 0;
-}
-  .budget > p > label {
+  .stats-table > thead th {
+    text-align: right;
+    font-size: 12px;
     color: #777;
   }
-    .budget > p > label > a {
-      color: #777;
-    }
-  .budget > p.big > label {
-    color: #444;
-    font-weight: bold;
+  .stats-table > tbody > tr {
+    border-top: 1px dotted #eee;
   }
-  .budget > p.em > label {
-    font-style: italic;
-  }
-  .budget > p > .value {
-    float: right;
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: bold;
-  }
-    .budget > p > .value > .warning {
-      cursor: default;
-    }
-  .budget > p.big > .value {
+  .stats-table > tbody > tr.big {
     font-size: 20px;
   }
-  .budget > p.em > .value {
-    font-style: italic;
-  }
+    .stats-table > tbody td {
+      padding: 6px 4px;
+      font-size: 12px;
+      color: #555;
+      text-align: right;
+    }
+    .stats-table > tbody > tr.big > td {
+      padding: 12px 0;
+    }
+    .stats-table > tbody > tr.em > td {
+      font-style: italic;
+    }
+      .stats-table > tbody td > .warning {
+        cursor: default;
+      }
+    .stats-table > tbody td:nth-child(2) {
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: bold;
+    }
+      .stats-table > tbody > tr.big > td:nth-child(2) {
+        font-size: 16px;
+      }
+    .stats-table > tbody td:first-child {
+      color: #777;
+      font-size: 16px;
+      padding: 6px 0;
+      text-align: left;
+    }
+      .stats-table > tbody td:first-child > a {
+        color: #777;
+      }
+    .stats-table > tbody > tr.big > td:first-child {
+      color: #444;
+      font-weight: bold;
+    }
 
 .transactions {
   list-style: none;
