@@ -161,7 +161,7 @@ class BudgetList(list):
             return 0
         balance = self.savings_balance
         if balance < 0:
-            remaining_months = 12 - datetime.date.today().month - 1
+            remaining_months = 12 - datetime.date.today().month + 1
             return self.current.savings_goal + abs(balance) / remaining_months
         return self.current.savings_goal
 
