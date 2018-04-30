@@ -604,6 +604,7 @@ hr {
 
 .ct-chart {
   margin: 10px -10px 25px;
+  position: relative;
 }
   .ct-chart .ct-series-a .ct-area {
     fill: #d7eaf7;
@@ -625,6 +626,11 @@ hr {
 #months .ct-series-d .ct-line,
 #months .ct-series-d .ct-point {
   stroke: #aaa;
+}
+
+#expenses-per-day .ct-series-b .ct-area {
+  fill: #2cd211;
+  fill-opacity: .3;
 }
 
 #goals + #categories {

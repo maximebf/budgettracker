@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request, session, redirect, u
 from werkzeug.utils import secure_filename
 from monthdelta import monthdelta
 from tempfile import NamedTemporaryFile
-import datetime, functools, json, unicodecsv, StringIO, os, uuid
+import datetime, functools, json, unicodecsv, StringIO, os, uuid, math
 from ..data import sort_transactions
 from ..budget import IncomeSource, PlannedExpense, BudgetGoal
 from ..categories import Category, compute_categories
@@ -38,6 +38,7 @@ def utility_processor():
     return dict(
         famount=create_amount_formatter(config),
         max=max,
+        ceil=math.ceil,
         current_month=datetime.date.today().replace(day=1),
         value_class=value_class,
         config_categories=categories,
@@ -86,7 +87,22 @@ def index(year=None, month=None):
 
     accounts = storage.load_accounts()
     budgets = load_yearly_budgets_from_config(config, date, storage=storage)
+    budget = budgets.get_from_date(date)
     categories = compute_monthly_categories_from_config(config, date, storage=storage)
+    safe_to_spend = round(budget.expected_income - budget.expected_planned_expenses - budget.savings_goal, 2)
+
+    expenses_per_day = {}
+    for tx in [tx for tx in budget.transactions if tx.amount < 0 and tx not in budget.planned_expenses_transactions]:
+        expenses_per_day.setdefault(tx.date.day, 0)
+        expenses_per_day[tx.date.day] += abs(tx.amount)
+
+    nb_days_in_current_month = (date.replace(day=1) + monthdelta(1) - datetime.timedelta(days=1)).day
+    daily_safe_to_spend = round(safe_to_spend / nb_days_in_current_month, 2)
+    chart_ideal_expenses = [daily_safe_to_spend]
+    chart_expenses_per_day = [expenses_per_day.get(1, 0)]
+    for i in range(2, nb_days_in_current_month + 1):
+        chart_expenses_per_day.append(round(chart_expenses_per_day[i - 2] + expenses_per_day.get(i, 0), 2))
+        chart_ideal_expenses.append(round(daily_safe_to_spend * i, 2))
     
     return render_template('index.html',
         date=date,
@@ -95,7 +111,10 @@ def index(year=None, month=None):
         accounts=accounts,
         account_balance=sum([a.amount for a in accounts]),
         budgets=budgets,
-        budget=budgets.get_from_date(date),
+        budget=budget,
+        chart_expenses_per_day=chart_expenses_per_day,
+        chart_ideal_expenses=chart_ideal_expenses,
+        chart_expenses_per_day_labels=range(1, nb_days_in_current_month + 1),
         bank_adapter=bank_adapter,
         categories=categories,
         months=months_labels)
@@ -145,10 +164,10 @@ def year(year):
         months=months_labels,
         nb_months=nb_months,
         chart_months=[l for i, l in months_labels],
-        chart_incomes=[(b.income if b.month < current else b.expected_income) for b in budgets],
-        chart_all_expenses=[-b.expenses-b.expected_planned_expenses for b in budgets],
+        chart_incomes=[round(b.income if b.month < current else b.expected_income, 2) for b in budgets],
+        chart_all_expenses=[round(-b.expenses-b.expected_planned_expenses, 2) for b in budgets],
         chart_expenses=[-b.expenses for b in budgets],
-        chart_savings=[(b.savings if b.month < current else b.expected_savings) for b in budgets]
+        chart_savings=[round(b.savings if b.month < current else b.expected_savings, 2) for b in budgets]
     )
 
 
@@ -171,7 +190,7 @@ def income(year):
         income=budgets.real_income,
         transactions=sort_transactions(budgets.income_transactions),
         chart_months=[l for i, l in months_labels],
-        chart_amounts=chart_amounts
+        chart_amounts=[round(a, 2) for a in chart_amounts]
     )
 
 
@@ -194,7 +213,7 @@ def planned_expenses(year):
         income=budgets.real_planned_expenses,
         transactions=sort_transactions(budgets.planned_expenses_transactions),
         chart_months=[l for i, l in months_labels],
-        chart_amounts=chart_amounts
+        chart_amounts=[round(a, 2) for a in chart_amounts]
     )
 
 
@@ -231,8 +250,8 @@ def category(year, name):
         transactions=transactions,
         category=category[0],
         chart_months=[l for i, l in months_labels],
-        chart_amounts=chart_amounts,
-        chart_warning=[category[0].warning_threshold / 12]*12 if category[0].warning_threshold else None,
+        chart_amounts=[round(a, 2) for a in chart_amounts],
+        chart_warning=[round(category[0].warning_threshold / 12, 2)]*12 if category[0].warning_threshold else None,
         monthly_average=monthly_average
     )
 
@@ -272,7 +291,7 @@ def goal(year, label):
         transactions=transactions,
         categories=categories,
         chart_months=[l for i, l in months_labels],
-        chart_amounts=chart_amounts,
+        chart_amounts=[round(a, 2) for a in chart_amounts],
     )
 
 

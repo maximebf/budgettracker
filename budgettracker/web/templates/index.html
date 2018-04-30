@@ -1,6 +1,10 @@
 {% from 'macros.html' import transaction with context %}
 {% extends "layout.html" %}
 {% block title %}{{date.strftime('%B %Y')}}{% endblock %}
+{% block head %}
+  <script src="{{url_for('static', filename='chartist.min.js')}}"></script>
+  <link rel="stylesheet" type="text/css" href="{{url_for('static', filename='chartist.min.css')}}">
+{% endblock %}
 
 {% block page_header %}
   {% include "_year_overview.html" %}
@@ -27,6 +31,7 @@
 {% block page %}
   {% if budget %}
     {% include "_budget.html" %}
+    <div id="expenses-per-day" class="ct-chart"></div>
     {% if budget.transactions %}
     {% if categories %}
       {% include "_categories_bar.html" %}
@@ -65,4 +70,40 @@
     <a href="{{url_for('logout')}}">logout</a>
   </div>
   {% include "_tx_options.html" %}
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+     var data = {
+       labels: {{chart_expenses_per_day_labels|tojson}},
+       series: [
+         {name: 'expenses', data: {{chart_expenses_per_day|tojson}} },
+         {name: 'ideal', data: {{chart_ideal_expenses|tojson}} }
+       ]
+     };
+
+     new Chartist.Line('#expenses-per-day', data, {
+       fullWidth: true,
+       showLine: false,
+       showPoint: false,
+       showArea: true,
+       axisX: {
+         showGrid: false
+       },
+       axisY: {
+         showLabel: false,
+         offset: 0
+       },
+       series: {
+         'expenses': {
+           showLine: true,
+           showPoint: true,
+           showArea: false
+         }
+       },
+       plugins: [
+         Chartist.plugins.tooltip()
+       ]
+     });
+   });
+ </script>
 {% endblock %}
