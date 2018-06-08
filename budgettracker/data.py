@@ -80,9 +80,10 @@ def update_transactions(old_transactions, new_transactions):
                 categories=list(set(old[tx.id].categories or []) | set(tx.categories or [])),
                 goal=old[tx.id].goal
             ))
+            old.pop(tx.id)
         else:
             final.append(tx)
-    return final
+    return old.values() + final
 
 
 def filter_out_transactions(transactions, remove_transactions):
